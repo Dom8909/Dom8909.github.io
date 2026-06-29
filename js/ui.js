@@ -24,9 +24,11 @@ document.getElementById('year').textContent = new Date().getFullYear();
   if(fineP && !reduce && isChromium){
     document.documentElement.classList.add('tilt-on');
     document.querySelectorAll('[data-tilt]').forEach(card=>{ const max=5;
-      card.addEventListener('mousemove', e=>{ const r=card.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
-        card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; });
-      card.addEventListener('mouseleave', ()=>{ card.style.transform=''; });
+      // pointermove (not mousemove): the demo canvases handle Pointer Events and set
+      // touch-action, which can suppress the legacy mousemove the tilt used to rely on.
+      card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; const r=card.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
+        card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
+      card.addEventListener('pointerleave', ()=>{ card.style.transform=''; });
     });
   }
 
