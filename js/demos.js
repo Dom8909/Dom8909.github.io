@@ -119,43 +119,6 @@
     return ()=>{ cancelAnimationFrame(raf); c.removeEventListener('pointerdown',pd); c.removeEventListener('pointermove',pm); window.removeEventListener('pointerup',pu); };
   };}
 
-  // Wireframe: an icosahedron projected to 2D; drag to rotate.
-  function wire(c){ return function(){ let {ctx,w,h}=fit(c); const PHI=1.618033988749;
-    const V=[[0,1,PHI],[0,1,-PHI],[0,-1,PHI],[0,-1,-PHI],[1,PHI,0],[1,-PHI,0],[-1,PHI,0],[-1,-PHI,0],[PHI,0,1],[PHI,0,-1],[-PHI,0,1],[-PHI,0,-1]];
-    const E=[]; for(let i=0;i<12;i++) for(let j=i+1;j<12;j++){ const dx=V[i][0]-V[j][0],dy=V[i][1]-V[j][1],dz=V[i][2]-V[j][2]; if(Math.abs(dx*dx+dy*dy+dz*dz-4)<0.001) E.push([i,j]); }
-    const st={on:false}; const off=ptr(c,st); let raf, rx=0.5, ry=0.4, trx=0.5, try_=0.4;
-    const R=Math.min(w,h)*0.62, cx=w/2, cy=h/2, F=4.2;
-    function project(){ const cosx=Math.cos(rx),sinx=Math.sin(rx),cosy=Math.cos(ry),siny=Math.sin(ry);
-      return V.map(v=>{ const x=v[0],y=v[1],z=v[2]; const y1=y*cosx-z*sinx, z1=y*sinx+z*cosx; const x2=x*cosy+z1*siny, z2=-x*siny+z1*cosy; const s=F/(F-z2*0.42); return {x:cx+x2*R*s*0.32, y:cy+y1*R*s*0.32, z:z2}; }); }
-    function draw(){ ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h);
-      if(st.on){ try_=(st.x/w-0.5)*Math.PI*2.2; trx=(st.y/h-0.5)*Math.PI*1.6; } else { try_+=0.0065; trx+=0.0026; }
-      rx+=(trx-rx)*0.08; ry+=(try_-ry)*0.08; const P=project();
-      for(const e of E){ const a=P[e[0]], b=P[e[1]]; const dep=(a.z+b.z)/2; const al=Math.max(0.12,Math.min(0.85,0.4+0.42*((dep+2)/4)));
-        ctx.strokeStyle='rgba(150,205,255,'+al.toFixed(3)+')'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); }
-      for(const p of P){ ctx.beginPath(); ctx.arc(p.x,p.y,1.7,0,7); ctx.fillStyle='rgba(94,234,212,0.9)'; ctx.fill(); }
-      raf=requestAnimationFrame(draw);
-    }
-    if(reduce){ const P=project(); ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h); for(const e of E){ const a=P[e[0]],b=P[e[1]]; ctx.strokeStyle='rgba(150,205,255,0.5)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } return ()=>off(); }
-    draw(); return ()=>{ cancelAnimationFrame(raf); off(); };
-  };}
-
-  // Portal: a decorative particle vortex.
-  function portal(c){ return function(){ let {ctx,w,h}=fit(c); const cx=w/2, cy=h/2, R=Math.min(w,h)*0.4;
-    const N=Math.max(50,Math.min(150,Math.round(w*h/1300))), P=[];
-    for(let i=0;i<N;i++) P.push({a:Math.random()*Math.PI*2, r:R*(0.25+Math.random()*1.0), sz:0.8+Math.random()*1.8, c:Math.random()<0.5?'94,234,212':'167,139,250'});
-    let raf,t=0;
-    function draw(){ t++; ctx.fillStyle='rgba(6,7,15,0.30)'; ctx.fillRect(0,0,w,h); ctx.save(); ctx.translate(cx,cy);
-      for(let ring=0;ring<3;ring++){ const rr=R*(0.92+ring*0.05)+Math.sin(t*0.02+ring)*2; ctx.beginPath(); ctx.ellipse(0,0,rr,rr*0.6,0,0,7); ctx.strokeStyle='rgba(167,139,250,'+(0.14-ring*0.04)+')'; ctx.lineWidth=2; ctx.stroke(); }
-      for(const p of P){ p.a+=0.004+(R*0.9-p.r)*0.00006+0.006; p.r-=0.16; if(p.r<R*0.16){ p.r=R*(0.95+Math.random()*0.3); p.a=Math.random()*Math.PI*2; }
-        const x=Math.cos(p.a)*p.r, y=Math.sin(p.a)*p.r*0.6, al=Math.max(0,Math.min(0.85,1-p.r/(R*1.25)));
-        ctx.beginPath(); ctx.arc(x,y,p.sz,0,7); ctx.fillStyle='rgba('+p.c+','+(al*0.7+0.12).toFixed(3)+')'; ctx.fill(); }
-      ctx.beginPath(); ctx.arc(0,0,R*0.16,0,7); const gg=ctx.createRadialGradient(0,0,1,0,0,R*0.16); gg.addColorStop(0,'rgba(255,255,255,0.5)'); gg.addColorStop(1,'rgba(167,139,250,0)'); ctx.fillStyle=gg; ctx.fill();
-      ctx.restore(); raf=requestAnimationFrame(draw);
-    }
-    if(reduce){ ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h); ctx.save(); ctx.translate(cx,cy); ctx.strokeStyle='rgba(167,139,250,0.45)'; ctx.lineWidth=2; ctx.beginPath(); ctx.ellipse(0,0,R,R*0.6,0,0,7); ctx.stroke(); ctx.restore(); return ()=>{}; }
-    ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h); draw(); return ()=>cancelAnimationFrame(raf);
-  };}
-
-  const reg={portal,flock,path,wire};
+  const reg={flock,path};
   document.querySelectorAll('canvas[data-demo]').forEach(c=>{ const fn=reg[c.getAttribute('data-demo')]; if(fn) runWhenVisible(c, fn(c)); });
 })();
