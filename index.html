@@ -78,6 +78,25 @@
   <section id="work" class="wrap">
     <div class="head reveal"><h2>Selected work</h2></div>
     <div class="grid">
+      <div class="reveal neuro-card"><article class="lg card">
+        <div class="neuro-wrap">
+          <div class="neuro-stage">
+            <canvas id="neuroSim"></canvas>
+            <div class="neuro-hud"><span id="neuroGen">Gen 1</span> · <span id="neuroAlive">60 alive</span> · <span id="neuroBest">best 0</span></div>
+          </div>
+          <div class="neuro-panel">
+            <div class="tags"><span class="tag">Neural network</span><span class="tag">Genetic algorithm</span></div>
+            <h3>Neuroevolution</h3>
+            <p>A fleet of vessels learns to run the channel on its own. Each one is steered by a small neural network I wrote from scratch, and the fleet improves every generation through a genetic algorithm. No training data, no libraries.</p>
+            <canvas id="neuroBrain" class="neuro-brain"></canvas>
+            <div class="neuro-cap">the leader's network, firing live</div>
+            <div class="neuro-ctrl">
+              <button class="chess-new" id="neuroSpeed">Speed: 1×</button>
+              <button class="chess-new" id="neuroNew">New course</button>
+            </div>
+          </div>
+        </div>
+      </article></div>
       <div class="tilt reveal chess-card"><article class="lg card" data-tilt data-glass="18">
         <div class="chess-wrap">
           <div class="chess-board" id="chessBoard"></div>
@@ -152,6 +171,7 @@
 <script src="js/ui.js"></script>
 <script src="js/glass.js"></script>
 <script src="js/demos.js"></script>
+<script src="js/neuro.js"></script>
 <script src="js/chess.js"></script>
 <script src="js/conjure.js"></script>
 </body>
