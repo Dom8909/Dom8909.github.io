@@ -1,4 +1,4 @@
-/* core: shared environment flags — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Environment flags shared by the other modules via window.PF.
 window.PF = (function(){
 
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;

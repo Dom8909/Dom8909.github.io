@@ -1,4 +1,4 @@
-/* ui: year, nav condense, mobile menu, scroll-reveal, card tilt — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Page chrome: footer year, nav condense on scroll, mobile menu, scroll-reveal, and card tilt.
 (function(){
   const reduce = PF.reduce, isChromium = PF.isChromium;
 document.getElementById('year').textContent = new Date().getFullYear();
@@ -7,7 +7,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const onScroll=()=>bar.classList.toggle('condensed', scrollY>40);
   addEventListener('scroll', onScroll, {passive:true}); onScroll();
 
-  /* mobile nav: collapsed hamburger menu (<=560px) */
+  // collapsed menu toggle (<=560px)
   const menuBtn=document.getElementById('menuBtn'), navLinks=document.getElementById('navLinks');
   if(menuBtn && navLinks){
     const setMenu=open=>{ bar.classList.toggle('menu-open', open); menuBtn.setAttribute('aria-expanded', open?'true':'false'); menuBtn.setAttribute('aria-label', open?'Close menu':'Open menu'); };

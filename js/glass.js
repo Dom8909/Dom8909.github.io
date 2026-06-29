@@ -1,7 +1,6 @@
-/* glass: liquid-glass backdrop refraction (Chromium) — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Liquid-glass backdrop refraction. Chromium only; other browsers use the CSS frost fallback.
 (function(){
   const isChromium = PF.isChromium;
-/* ===== liquid glass displacement ===== */
   const NS='http://www.w3.org/2000/svg';
   const defs=document.getElementById('lg-defs');
   function buildMap(w,h,r,bezel){

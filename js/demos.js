@@ -1,7 +1,6 @@
-/* demos: shoal / pathfinder / wireframe / portal canvases — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Canvas demos: shoal, pathfinder, wireframe, and portal.
 (function(){
   const reduce = PF.reduce;
-/* ===== interactive demos ===== */
   function fit(c){ const dpr=Math.min(devicePixelRatio||1,2); const r=c.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; const ctx=c.getContext('2d'); ctx.scale(dpr,dpr); return {ctx,w:r.width,h:r.height}; }
   function ptr(c,st){ const hint=c.parentNode.querySelector('.hint');
     const set=e=>{ const r=c.getBoundingClientRect(); st.x=e.clientX-r.left; st.y=e.clientY-r.top; st.on=true; if(hint&&!st._h){ st._h=true; hint.style.opacity=0; } };
@@ -11,7 +10,7 @@
   }
   function runWhenVisible(c,start){ let stop=null; new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&!stop){stop=start();} else if(!en.isIntersecting&&stop){stop();stop=null;} }); },{threshold:0.05}).observe(c); }
 
-  /* A* search (4-neighbour, manhattan) -> {order:[closed cells], path:[cells]} */
+  // A* on a 4-neighbour grid (Manhattan heuristic). Returns the expansion order and the path.
   function astar(nc,nr,wall,si,gi){ const open=[]; const g={},f={},came={},closed=new Uint8Array(nc*nr),inOpen=new Uint8Array(nc*nr);
     const gx=gi%nc, gy=(gi/nc|0); const hx=i=>Math.abs((i%nc)-gx)+Math.abs(((i/nc|0))-gy);
     g[si]=0; f[si]=hx(si); open.push(si); inOpen[si]=1; const order=[];
@@ -23,10 +22,10 @@
         const ng=g[cur]+1; if(g[ni]===undefined||ng<g[ni]){ g[ni]=ng; f[ni]=ng+hx(ni); came[ni]=cur; if(!inOpen[ni]){ open.push(ni); inOpen[ni]=1; } } }
     } return {order,path:[]}; }
 
-  /* Shoal — 3D boids: a school of fish in deep water; the cursor parts the shoal */
+  // Shoal: 3D boids with perspective projection; the pointer repels nearby fish.
   function flock(c){ return function(){ let {ctx,w,h}=fit(c);
     const N=Math.max(26,Math.min(60,Math.round(w*h/3400)));
-    const DEPTH=420, FOCAL=440, cz=DEPTH/2;        /* perspective: screen scale = FOCAL/(FOCAL+z) */
+    const DEPTH=420, FOCAL=440, cz=DEPTH/2;        // screen scale = FOCAL / (FOCAL + z)
     const MAX=2.4, MIN=1.2, PER=46, SEP=22;
     const F=[];
     for(let i=0;i<N;i++) F.push({ x:Math.random()*w, y:Math.random()*h, z:Math.random()*DEPTH,
@@ -82,7 +81,7 @@
     loop(); return ()=>{ cancelAnimationFrame(raf); off(); };
   };}
 
-  /* Pathfinder — A* visualizer; drag to draw walls, it re-solves live */
+  // Pathfinder: animates the A* search; drag to toggle walls and it re-solves.
   function path(c){ return function(){ let {ctx,w,h}=fit(c); const cell=Math.max(13,Math.round(Math.min(w,h)/9));
     const nc=Math.max(6,Math.floor(w/cell)), nr=Math.max(4,Math.floor(h/cell)); const ox=(w-nc*cell)/2, oy=(h-nr*cell)/2;
     let wall=new Uint8Array(nc*nr); const si=Math.floor(nr/2)*nc+0, gi=Math.floor(nr/2)*nc+(nc-1);
@@ -120,7 +119,7 @@
     return ()=>{ cancelAnimationFrame(raf); c.removeEventListener('pointerdown',pd); c.removeEventListener('pointermove',pm); window.removeEventListener('pointerup',pu); };
   };}
 
-  /* Wireframe — a rotating icosahedron; drag to spin it */
+  // Wireframe: an icosahedron projected to 2D; drag to rotate.
   function wire(c){ return function(){ let {ctx,w,h}=fit(c); const PHI=1.618033988749;
     const V=[[0,1,PHI],[0,1,-PHI],[0,-1,PHI],[0,-1,-PHI],[1,PHI,0],[1,-PHI,0],[-1,PHI,0],[-1,-PHI,0],[PHI,0,1],[PHI,0,-1],[-PHI,0,1],[-PHI,0,-1]];
     const E=[]; for(let i=0;i<12;i++) for(let j=i+1;j<12;j++){ const dx=V[i][0]-V[j][0],dy=V[i][1]-V[j][1],dz=V[i][2]-V[j][2]; if(Math.abs(dx*dx+dy*dy+dz*dz-4)<0.001) E.push([i,j]); }
@@ -140,7 +139,7 @@
     draw(); return ()=>{ cancelAnimationFrame(raf); off(); };
   };}
 
-  /* Portal — a swirling time-portal vortex (decorative, for MagicDoor) */
+  // Portal: a decorative particle vortex.
   function portal(c){ return function(){ let {ctx,w,h}=fit(c); const cx=w/2, cy=h/2, R=Math.min(w,h)*0.4;
     const N=Math.max(50,Math.min(150,Math.round(w*h/1300))), P=[];
     for(let i=0;i<N;i++) P.push({a:Math.random()*Math.PI*2, r:R*(0.25+Math.random()*1.0), sz:0.8+Math.random()*1.8, c:Math.random()<0.5?'94,234,212':'167,139,250'});

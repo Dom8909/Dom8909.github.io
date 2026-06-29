@@ -1,10 +1,10 @@
-/* chess: self-contained engine + board UI — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Chess: rules, an alpha-beta engine, and the board UI. No dependencies.
 (function(){
   var boardEl=document.getElementById('chessBoard'); if(!boardEl) return;
   var statusEl=document.getElementById('chessStatus'), newBtn=document.getElementById('chessNew');
   var GLYPH={k:'\u265A',q:'\u265B',r:'\u265C',b:'\u265D',n:'\u265E',p:'\u265F'};
 
-  /* ===== rules (self-contained, perft-verified) ===== */
+  // Move generation and legality.
   var KN=[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
   var DIR8=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
   var DIAG=[[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -23,7 +23,6 @@
     for(var i=0;i<ORTH.length;i++){ var tr=r+ORTH[i][0],tc=c+ORTH[i][1]; while(inb(tr,tc)){ var p=b[tr*8+tc]; if(p){ if(p.c===by&&(p.t==='r'||p.t==='q')) return true; break; } tr+=ORTH[i][0]; tc+=ORTH[i][1]; } }
     return false;
   }
-  function kingIdx(b,color){ for(var i=0;i<64;i++){ var p=b[i]; if(p&&p.t==='k'&&p.c===color) return i; } return -1; }
   function kingsOf(b,color){ var a=[]; for(var i=0;i<64;i++){ var p=b[i]; if(p&&p.t==='k'&&p.c===color) a.push(i); } return a; }
   function hasSafeKing(b,color){ var ks=kingsOf(b,color); if(!ks.length) return false; for(var i=0;i<ks.length;i++){ if(!attacked(b,ks[i]>>3,ks[i]&7,opp(color))) return true; } return false; }
   function anyKingAttacked(b,color){ var ks=kingsOf(b,color); for(var i=0;i<ks.length;i++){ if(attacked(b,ks[i]>>3,ks[i]&7,opp(color))) return true; } return false; }
@@ -57,7 +56,7 @@
     return out;
   }
 
-  /* ===== engine (alpha-beta + quiescence + iterative deepening) ===== */
+  // Search: alpha-beta with quiescence and iterative deepening.
   var PVAL={p:100,n:320,b:330,r:500,q:900,k:20000};
   var PST={
    p:[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0],
@@ -81,7 +80,7 @@
     for(var d=1; d<=6; d++){ try{ var a=-1e9,b=1e9,bm=null,bv=-1e9; orderMoves(st,legal); for(var i=0;i<legal.length;i++){ var v=-negamax(applyMove(st,legal[i]),d-1,-b,-a,1); if(v>bv){ bv=v; bm=legal[i]; } if(bv>a) a=bv; } if(bm) best=bm; }catch(e){ if(e===TIMEOUT) break; else throw e; } if((Date.now()-T0)>timeMs) break; }
     return best; }
 
-  /* ===== UI ===== */
+  // Board rendering and input.
   var state=null, selected=-1, targets=[], lastMove=null, busy=false, won=false;
   function setStatus(t){ if(statusEl) statusEl.textContent=t; }
   function updateStatus(){ var wK=kingsOf(state.board,'w').length, bK=kingsOf(state.board,'b').length;

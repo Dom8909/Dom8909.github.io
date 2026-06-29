@@ -1,7 +1,6 @@
-/* background: interactive grid + match-3 + fireworks — part of Dominic Iannopollo's portfolio. Shared flags live in core.js (window.PF). */
+// Background grid: click cells to fill them; completing a same-color square clears it.
 (function(){
   const reduce = PF.reduce;
-/* ===== interactive background grid ===== */
   (function(){
     const cv=document.getElementById('grid'); if(!cv) return; const ctx=cv.getContext('2d');
     function rr(x,y,w,h,r){ ctx.beginPath(); if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); } else { ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); } }
@@ -15,7 +14,7 @@
       on.forEach((col,key)=>{ const p=key.split(','); const x=p[1]*cell, y=p[0]*cell; ctx.fillStyle=col; ctx.shadowBlur=4; ctx.shadowColor=col; rr(x+pad,y+pad,cell-pad*2,cell-pad*2,rad); ctx.fill(); }); ctx.shadowBlur=0;
       if(hoverKey && !on.has(hoverKey)){ const p=hoverKey.split(','); ctx.fillStyle='rgba(255,255,255,0.06)'; rr(p[1]*cell+pad,p[0]*cell+pad,cell-pad*2,cell-pad*2,rad); ctx.fill(); }
     }
-    /* detect the largest same-colour square (8/6/4/2) containing r,c */
+    // largest same-color square (size 8/6/4/2) covering r,c, or null
     function checkMatch(r,c){ const col=on.get(r+','+c); if(!col) return null;
       for(const s of [8,6,4,2]){
         for(let r0=r-s+1;r0<=r;r0++){ for(let c0=c-s+1;c0<=c;c0++){ let ok=true;
@@ -23,7 +22,7 @@
           if(ok) return {s,r0,c0}; } }
       }
       return null; }
-    /* fireworks made of grid cells: expanding rings that glow then fade */
+    // expanding ring burst drawn with grid cells
     let bursts=[], fwRaf=null, fwStart=0;
     function startFireworks(br,bc,size){ bursts=[]; const n=Math.max(2,Math.round(size));
       for(let i=0;i<n;i++){ const ang=Math.random()*6.283, dist=Math.random()*size*0.55;
