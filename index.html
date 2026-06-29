@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://api.iconify.design; connect-src 'self' https://api.iconify.design" />
+<meta name="referrer" content="strict-origin-when-cross-origin" />
+<title>Dominic Iannopollo — Interactive &amp; Simulation Developer</title>
+<meta name="description" content="Dominic Iannopollo — software developer building real-time, interactive, and simulation experiences." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"></div>
+  <canvas id="grid" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <svg id="lg-defs" width="0" height="0" style="position:absolute" aria-hidden="true"></svg>
+
+  <div class="nav-shell">
+    <div class="lg bar" id="bar" data-glass="14">
+      <div class="mark">Dominic<b>.</b></div>
+      <div class="links" id="navLinks"><a href="#experience">Experience</a><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></div>
+      <button class="menu-btn" id="menuBtn" type="button" aria-label="Open menu" aria-controls="navLinks" aria-expanded="false"><span></span></button>
+    </div>
+  </div>
+
+  <header class="hero wrap">
+    <div class="hero-copy">
+      <div class="eyebrow reveal">Software Developer II · Open to work</div>
+      <h1 class="reveal">Software developer with a game designer's <em>heart.</em></h1>
+      <p class="lede reveal">I'm Dominic — a <strong>Software Developer II at DiSTI</strong> building real-time 3D virtual training, with a Game Design degree and a love for interactive, playful experiences. A few of mine are running live below — go ahead, play with them.</p>
+    </div>
+  </header>
+
+  <section id="experience" class="wrap">
+    <div class="head reveal"><h2>Experience</h2></div>
+    <div class="xp reveal">
+      <article class="lg xp-item" data-glass="16">
+        <div class="xp-when">Dec 2024 — Present<span>1 yr 7 mos · Orlando, FL</span></div>
+        <div class="xp-main">
+          <h3>The DiSTI Corporation</h3>
+          <div class="xp-roles">
+            <div class="xp-role"><b>Software Developer II</b> · Full-time · Aug 2025 – Present</div>
+            <div class="xp-role"><b>Software Developer</b> · Contract · Dec 2024 – Aug 2025</div>
+          </div>
+          <p>Develop real-time 3D virtual training simulations and the graphical interfaces operators depend on, working primarily in C#, .NET, and WPF. Implement new features, debug and optimize existing systems, and collaborate with engineers and designers to turn complex training requirements into reliable, maintainable software. Promoted from a contract Software Developer to a full-time Software Developer II after consistently delivering across the development lifecycle.</p>
+        </div>
+      </article>
+      <article class="lg xp-item" data-glass="16">
+        <div class="xp-when">Jun 2023 — Sep 2024<span>1 yr 4 mos · Orlando, FL</span></div>
+        <div class="xp-main">
+          <h3>Technical Designer <span class="xp-co">· Cubic Corporation</span></h3>
+          <div class="xp-meta">Contract · On-site</div>
+          <p>Worked as a technical designer building interactive simulation and training experiences, bridging the gap between design and engineering. Translated design requirements and prototypes into production-ready features, iterated on interactive systems, and partnered closely with engineering, art, and design teams to keep implementation aligned with the creative vision and project milestones.</p>
+        </div>
+      </article>
+      <article class="lg xp-item" data-glass="16">
+        <div class="xp-when">Mar 2023 — May 2023<span>3 mos · Remote</span></div>
+        <div class="xp-main">
+          <h3>IT Technician <span class="xp-co">· Reitzes Consulting, Inc.</span></h3>
+          <div class="xp-meta">Part-time</div>
+          <p>Delivered remote IT support and systems troubleshooting, diagnosing and resolving hardware and software issues for end users. Maintained day-to-day operations across Microsoft and Google Workspace environments and kept teams productive by responding quickly and clearly to technical requests.</p>
+        </div>
+      </article>
+      <article class="lg xp-item" data-glass="16">
+        <div class="xp-when">2019 — 2022<span>Education</span></div>
+        <div class="xp-main">
+          <h3>Full Sail University</h3>
+          <div class="xp-meta">B.S., Game Design</div>
+          <p>Earned a Bachelor of Science in Game Design, focusing on where design and engineering meet. Led cross-disciplinary teams and shipped multiple titles, including MagicDoor — a first-person, time-travel puzzle platformer built in Unreal Engine in which players move through eras to steal famous works of art. Coursework and projects spanned gameplay programming, level design, team leadership, and playtesting.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="work" class="wrap">
+    <div class="head reveal"><h2>Selected work</h2></div>
+    <div class="grid">
+      <div class="reveal chess-card"><article class="lg card">
+        <div class="chess-wrap">
+          <div class="chess-board" id="chessBoard"></div>
+          <div class="chess-panel">
+            <h3>Checkmate</h3>
+            <p>You versus a built-in chess engine. Fair warning — the bot is impossible to beat.</p>
+            <div class="chess-status" id="chessStatus">Your move — you’re White.</div>
+            <button class="chess-new" id="chessNew">New game</button>
+          </div>
+        </div>
+      </article></div>
+      <div class="reveal conjure-card"><article class="lg card" data-glass="18">
+        <div class="preview spawn-preview">
+          <div class="spawn-ui">
+            <input id="spawnInput" class="spawn-input" type="text" placeholder="Type anything…" maxlength="22" />
+            <button id="spawnBtn" class="spawn-btn">Spawn</button>
+          </div>
+          <span class="hint">type, then drag it out</span>
+        </div>
+        <div class="card-body"><h3>Conjure</h3><p>Type anything and it pops into a draggable object you can fling anywhere on the page.</p></div>
+      </article></div>
+      <div class="tilt reveal"><article class="lg card" data-tilt data-glass="18">
+        <div class="preview"><canvas data-demo="flock"></canvas><span class="hint">drag across to part the shoal</span></div>
+        <div class="card-body"><h3>Shoal</h3><p>A school of fish drifting through deep water — a 3D boids simulation where each fish follows just three local rules, yet they swarm, split, and reform with depth, light, and perspective. Sweep across the water to part the shoal.</p></div>
+      </article></div>
+      <div class="reveal"><article class="lg card" data-glass="18">
+        <div class="preview"><canvas data-demo="path"></canvas><span class="hint">drag to draw walls</span></div>
+        <div class="card-body"><h3>Pathfinder</h3><p>A* pathfinding, visualized. Watch the search fan out toward the goal, then trace the shortest route. Drag to draw walls and it re-solves instantly.</p></div>
+      </article></div>
+      <div class="tilt reveal"><article class="lg card" data-tilt data-glass="18">
+        <div class="preview"><canvas data-demo="wire"></canvas><span class="hint">drag to spin</span></div>
+        <div class="card-body"><h3>Wireframe</h3><p>A real-time 3D icosahedron, projected and rendered by hand on a 2D canvas — no WebGL. Drag to spin it and feel the depth shading shift.</p></div>
+      </article></div>
+      <div class="tilt reveal"><article class="lg card" data-tilt data-glass="18">
+        <div class="preview" style="cursor:default"><canvas data-demo="portal"></canvas><span class="hint" style="opacity:1">Unreal Engine · Team Eagle</span></div>
+        <div class="card-body"><h3>MagicDoor</h3><div class="meta">Team Lead · Unreal Engine · Full Sail · 2022</div><p>A first-person puzzle platformer where players time-travel to pull off an art heist. As team lead, I set the design direction, coordinated designers and artists, and kept the team supported all the way to a shipped build.</p><span class="open">View project <span class="arr">→</span></span></div>
+      </article></div>
+    </div>
+  </section>
+
+  <section id="about" class="wrap">
+    <div class="head reveal"><h2>About</h2></div>
+    <div class="lg about-panel reveal" data-glass="20">
+      <p>I'm a software developer with a Game Design background, currently building real-time 3D virtual training simulations as a Software Developer II at The DiSTI Corporation in Orlando. I studied Game Design at Full Sail University, and I focus on building software that pairs strong engineering with polished, engaging user experiences.</p>
+      <p>I led MagicDoor, a first-person puzzle platformer in which players travel through time to steal famous works of art, guiding a team of designers and artists through to a shipped release while keeping everyone aligned and supported. I'm continually driven to solve hard problems and craft compelling interactive experiences, with the goal of contributing at a AAA studio.</p>
+      <div class="skills"><span class="skill">C#</span><span class="skill">.NET</span><span class="skill">WPF</span><span class="skill">Python</span><span class="skill">Unreal Engine</span><span class="skill">Blueprints</span><span class="skill">Git / source control</span><span class="skill">Real-time 3D</span><span class="skill">Simulation</span><span class="skill">Game Design</span><span class="skill">Team Leadership</span><span class="skill">UI / UX</span></div>
+    </div>
+  </section>
+
+  <section id="contact" class="wrap">
+    <div class="lg contact-card reveal" data-glass="22">
+      <h2>Let's make something <em>worth visiting.</em></h2>
+      <p>Open to freelance, collaborations, and the occasional weird idea.</p>
+      <div class="contact-actions">
+        <a href="mailto:DomIannopollo@outlook.com" class="pill solid">Email me</a>
+        <a href="resume.pdf" download="Dominic-Iannopollo-Resume.pdf" type="application/pdf" class="lg pill" data-glass="14" download="Dominic_Iannopollo_Resume.pdf">Résumé</a>
+        <a href="https://www.linkedin.com/in/dominiciannopollo/" class="lg pill" data-glass="14" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        <a href="https://github.com/Dom8909" class="lg pill" data-glass="14" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>Designed &amp; built by Dominic Iannopollo · <span id="year"></span></footer>
+
+<script src="js/core.js"></script>
+<script src="js/background.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/glass.js"></script>
+<script src="js/demos.js"></script>
+<script src="js/chess.js"></script>
+<script src="js/conjure.js"></script>
+</body>
+</html>
