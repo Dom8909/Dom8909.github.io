@@ -22,8 +22,10 @@
   const SENS_ANG=[-1.0,-0.35,0.35,1.0], SENS_RANGE=120, RAY_STEP=6;
   const MAX_SPEED=2.5, TURN=0.075, CHAN_W=42, HALF=CHAN_W/2, GEN_FRAMES=750, CP2=(CHAN_W*0.72)*(CHAN_W*0.72);
   const MUT_RATE=0.12, MUT_AMT=0.5, ELITE=0.16, KEYS=['w1','b1','w2','b2'];
-  // sculpting: grab radius, joint spacing, drag falloff (centreline-index units), spring + damping, settle threshold
-  const GRAB2=(CHAN_W*1.1)*(CHAN_W*1.1), JOINT_STEP=15, SIGMA2=2*8*8, SPRING_K=0.22, DAMP=0.72, SETTLE_EPS=0.0018;
+  // sculpting: grab radius, joint spacing, drag falloff (centreline-index units), spring + damping,
+  // settle threshold, and the minimum gap a dragged joint must keep from any other joint (so the
+  // channel can't be pinched shut into a course the fleet can't navigate)
+  const GRAB2=(CHAN_W*1.1)*(CHAN_W*1.1), JOINT_STEP=15, SIGMA2=2*8*8, SPRING_K=0.22, DAMP=0.72, SETTLE_EPS=0.0018, MIN_JDIST=CHAN_W*1.4;
 
   // ---- neural network (flat weight arrays; forward writes into supplied buffers, never allocates) ----
   function rnd(n){ const a=new Float32Array(n); for(let i=0;i<n;i++) a[i]=Math.random()*2-1; return a; }
@@ -99,16 +101,34 @@
   function ptrPos(e){ const r=sim.getBoundingClientRect(); return [ (e.clientX-r.left)*(W/r.width), (e.clientY-r.top)*(H/r.height) ]; }
   // grabbing is by joint only: returns the centreline index of the nearest joint within reach, else -1
   function nearestJoint(x,y,maxd2){ let bi=-1, bd=maxd2; for(let j=0;j<joints.length;j++){ const p=centre[joints[j]]; const dx=p.x-x, dy=p.y-y, d=dx*dx+dy*dy; if(d<bd){ bd=d; bi=joints[j]; } } return bi; }
+  // nudge a joint's whole neighbourhood (same falloff as a drag) so the centreline follows without kinks
+  function shiftRegion(ci,dx,dy){ const N=centre.length, hiX=W-HALF, hiY=H-HALF;
+    for(let i=0;i<N;i++){ let d=i-ci; if(d<0)d=-d; if(d>N-d)d=N-d; const w=Math.exp(-(d*d)/SIGMA2); if(w<0.01) continue;
+      const q=centre[i]; q.tx+=dx*w; q.ty+=dy*w; if(q.tx<HALF)q.tx=HALF; else if(q.tx>hiX)q.tx=hiX; if(q.ty<HALF)q.ty=HALF; else if(q.ty>hiY)q.ty=hiY; } }
+  // push any pair of joints that ended up within MIN_JDIST back apart (the dragged joint is already clear)
+  function relaxJoints(){ const nj=joints.length;
+    for(let it=0; it<2; it++) for(let a=0;a<nj;a++){ const pa=centre[joints[a]];
+      for(let b=a+1;b<nj;b++){ const pb=centre[joints[b]]; const ddx=pb.tx-pa.tx, ddy=pb.ty-pa.ty, dist=Math.sqrt(ddx*ddx+ddy*ddy);
+        if(dist<MIN_JDIST && dist>0.001){ const push=(MIN_JDIST-dist)/dist*0.5, ox=ddx*push, oy=ddy*push; shiftRegion(joints[a],-ox,-oy); shiftRegion(joints[b],ox,oy); } } } }
   if(matchMedia('(pointer:fine)').matches && !reduce){
     sim.style.cursor='grab'; sim.style.touchAction='none'; const lo=HALF;
     sim.addEventListener('pointerdown', e=>{ const p=ptrPos(e); const i=nearestJoint(p[0],p[1],GRAB2); if(i<0) return;
       dragging=true; dragIdx=i; active=true; lastPx=p[0]; lastPy=p[1]; sim.style.cursor='grabbing'; try{sim.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
     sim.addEventListener('pointermove', e=>{ const p=ptrPos(e);
       if(!dragging){ sim.style.cursor = nearestJoint(p[0],p[1],GRAB2)>=0?'grab':'default'; return; }
-      const dx=p[0]-lastPx, dy=p[1]-lastPy, N=centre.length, hiX=W-HALF, hiY=H-HALF;
+      const N=centre.length, hiX=W-HALF, hiY=H-HALF, dj=centre[dragIdx];
+      // where the grabbed joint wants to go, then push it back out of any other joint's exclusion zone
+      // and clamp it to the canvas; the whole falloff region then moves by this constrained delta
+      let nx=dj.tx+(p[0]-lastPx), ny=dj.ty+(p[1]-lastPy);
+      for(let j=0;j<joints.length;j++){ const ji=joints[j]; if(ji===dragIdx) continue; const o=centre[ji];
+        const ddx=nx-o.tx, ddy=ny-o.ty, dist=Math.sqrt(ddx*ddx+ddy*ddy);
+        if(dist<MIN_JDIST && dist>0.001){ const k=(MIN_JDIST-dist)/dist; nx+=ddx*k; ny+=ddy*k; } }
+      if(nx<lo)nx=lo; else if(nx>hiX)nx=hiX; if(ny<lo)ny=lo; else if(ny>hiY)ny=hiY;
+      const adx=nx-dj.tx, ady=ny-dj.ty;
       for(let i=0;i<N;i++){ let d=i-dragIdx; if(d<0) d=-d; if(d>N-d) d=N-d; const w=Math.exp(-(d*d)/SIGMA2); if(w<0.01) continue;
-        const q=centre[i]; q.tx+=dx*w; q.ty+=dy*w;
+        const q=centre[i]; q.tx+=adx*w; q.ty+=ady*w;
         if(q.tx<lo)q.tx=lo; else if(q.tx>hiX)q.tx=hiX; if(q.ty<lo)q.ty=lo; else if(q.ty>hiY)q.ty=hiY; }
+      relaxJoints();
       lastPx=p[0]; lastPy=p[1]; active=true; });
     const endDrag=e=>{ if(!dragging) return; dragging=false; dragIdx=-1; sim.style.cursor='grab'; try{sim.releasePointerCapture(e.pointerId);}catch(_){} };
     sim.addEventListener('pointerup', endDrag); sim.addEventListener('pointercancel', endDrag);
