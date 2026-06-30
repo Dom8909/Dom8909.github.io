@@ -29,15 +29,18 @@ document.getElementById('year').textContent = new Date().getFullYear();
       // is under the cursor, which would flip the tilt, which would shift the card again: that
       // feedback is what made the tilt and the cursor flicker over the interactive displays.
       let base=null, zones=[];
-      function snapshot(){ base=card.getBoundingClientRect();
+      // measure from a forced-flat card so the zones are always from the untilted layout
+      function snapshot(){ card.style.transition='none'; card.style.transform='';
+        base=card.getBoundingClientRect();
         zones=[].map.call(card.querySelectorAll('.preview, .chess-board'), el=>el.getBoundingClientRect()); }
       function overDisplay(x,y){ for(const r of zones){ if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return true; } return false; }
       card.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') snapshot(); });
       card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; if(!base) snapshot();
-        if(overDisplay(e.clientX,e.clientY)){ card.style.transform=''; return; }   // hold flat over interactive displays
+        if(overDisplay(e.clientX,e.clientY)){ card.style.transition='none'; card.style.transform=''; return; }  // snap flat & steady over displays
+        card.style.transition='';                                                                              // smooth tilt over the body
         const px=(e.clientX-base.left)/base.width, py=(e.clientY-base.top)/base.height;
         card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
-      card.addEventListener('pointerleave', ()=>{ card.style.transform=''; base=null; });
+      card.addEventListener('pointerleave', ()=>{ card.style.transition=''; card.style.transform=''; base=null; });
     });
   }
 
