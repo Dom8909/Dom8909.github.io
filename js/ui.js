@@ -29,18 +29,23 @@ document.getElementById('year').textContent = new Date().getFullYear();
       // is under the cursor, which would flip the tilt, which would shift the card again: that
       // feedback is what made the tilt and the cursor flicker over the interactive displays.
       let base=null, zones=[];
-      // measure from a forced-flat card so the zones are always from the untilted layout
+      // measure from a forced-flat card so the zones are always from the untilted layout, and cache
+      // each display's own cursor so it can be forced onto the whole card while the pointer is over it
       function snapshot(){ card.style.transition='none'; card.style.transform='';
         base=card.getBoundingClientRect();
-        zones=[].map.call(card.querySelectorAll('.preview, .chess-board'), el=>el.getBoundingClientRect()); }
-      function overDisplay(x,y){ for(const r of zones){ if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return true; } return false; }
+        zones=[].map.call(card.querySelectorAll('.preview, .chess-board'), el=>{ const r=el.getBoundingClientRect();
+          return { l:r.left, r:r.right, t:r.top, b:r.bottom, cur:getComputedStyle(el).cursor }; }); }
+      function displayCursor(x,y){ for(const z of zones){ if(x>=z.l&&x<=z.r&&y>=z.t&&y<=z.b) return z.cur||'crosshair'; } return ''; }
       card.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') snapshot(); });
       card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; if(!base) snapshot();
-        if(overDisplay(e.clientX,e.clientY)){ card.style.transition='none'; card.style.transform=''; return; }  // snap flat & steady over displays
-        card.style.transition='';                                                                              // smooth tilt over the body
+        const cur=displayCursor(e.clientX,e.clientY);
+        // over a display: stay flat and force the display's cursor onto the whole card, so the card
+        // body (which the tilt can momentarily slide under a fast-moving pointer) shows it too
+        if(cur){ card.style.transition='none'; card.style.transform=''; card.style.cursor=cur; return; }
+        card.style.transition=''; card.style.cursor='';
         const px=(e.clientX-base.left)/base.width, py=(e.clientY-base.top)/base.height;
         card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
-      card.addEventListener('pointerleave', ()=>{ card.style.transition=''; card.style.transform=''; base=null; });
+      card.addEventListener('pointerleave', ()=>{ card.style.transition=''; card.style.transform=''; card.style.cursor=''; base=null; });
     });
   }
 
