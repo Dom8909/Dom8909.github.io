@@ -24,14 +24,20 @@ document.getElementById('year').textContent = new Date().getFullYear();
   if(fineP && !reduce && isChromium){
     document.documentElement.classList.add('tilt-on');
     document.querySelectorAll('[data-tilt]').forEach(card=>{ const max=5;
-      // Track with pointermove (mousemove is unreliable over the demo canvases). Keep the
-      // card flat while the pointer is over an interactive display (a demo canvas or the
-      // chess board) so it stays steady while you interact with it.
-      card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return;
-        if(e.target.closest('.preview, .chess-board')){ card.style.transform=''; return; }
-        const r=card.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
+      // Decide everything from a geometry snapshot taken when the pointer enters, never from
+      // the live (tilted) layout. The tilt shifts the card, so a live hit-test would flip what
+      // is under the cursor, which would flip the tilt, which would shift the card again: that
+      // feedback is what made the tilt and the cursor flicker over the interactive displays.
+      let base=null, zones=[];
+      function snapshot(){ base=card.getBoundingClientRect();
+        zones=[].map.call(card.querySelectorAll('.preview, .chess-board'), el=>el.getBoundingClientRect()); }
+      function overDisplay(x,y){ for(const r of zones){ if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom) return true; } return false; }
+      card.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') snapshot(); });
+      card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; if(!base) snapshot();
+        if(overDisplay(e.clientX,e.clientY)){ card.style.transform=''; return; }   // hold flat over interactive displays
+        const px=(e.clientX-base.left)/base.width, py=(e.clientY-base.top)/base.height;
         card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
-      card.addEventListener('pointerleave', ()=>{ card.style.transform=''; });
+      card.addEventListener('pointerleave', ()=>{ card.style.transform=''; base=null; });
     });
   }
 
