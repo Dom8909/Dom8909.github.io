@@ -28,7 +28,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
       // card flat while the pointer is over an interactive display (a demo canvas or the
       // chess board) so it stays steady while you interact with it.
       card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return;
-        if(e.target.closest('canvas, .chess-board')){ card.style.transform=''; return; }
+        if(e.target.closest('.preview, .chess-board')){ card.style.transform=''; return; }
         const r=card.getBoundingClientRect(); const px=(e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
         card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
       card.addEventListener('pointerleave', ()=>{ card.style.transform=''; });
