@@ -22,8 +22,8 @@
   const SENS_ANG=[-1.0,-0.35,0.35,1.0], SENS_RANGE=120, RAY_STEP=6;
   const MAX_SPEED=2.5, TURN=0.075, CHAN_W=42, HALF=CHAN_W/2, GEN_FRAMES=750, CP2=(CHAN_W*0.72)*(CHAN_W*0.72);
   const MUT_RATE=0.12, MUT_AMT=0.5, ELITE=0.16, KEYS=['w1','b1','w2','b2'];
-  // sculpting: grab radius, drag falloff (in centreline-index units), spring + damping, settle threshold
-  const GRAB2=(CHAN_W*0.95)*(CHAN_W*0.95), SIGMA2=2*13*13, SPRING_K=0.22, DAMP=0.72, SETTLE_EPS=0.0018;
+  // sculpting: grab radius, joint spacing, drag falloff (centreline-index units), spring + damping, settle threshold
+  const GRAB2=(CHAN_W*1.1)*(CHAN_W*1.1), JOINT_STEP=15, SIGMA2=2*8*8, SPRING_K=0.22, DAMP=0.72, SETTLE_EPS=0.0018;
 
   // ---- neural network (flat weight arrays; forward writes into supplied buffers, never allocates) ----
   function rnd(n){ const a=new Float32Array(n); for(let i=0;i<n;i++) a[i]=Math.random()*2-1; return a; }
@@ -39,7 +39,7 @@
     for(let i=0;i<z.length;i++){ z[i]=Math.random()<0.5?x[i]:y[i]; if(Math.random()<MUT_RATE) z[i]+=(Math.random()*2-1)*MUT_AMT; } } }
 
   // ---- course: a winding closed channel; a 1-byte mask (re)stamped from the live centreline ----
-  let W=0,H=0,dpr=1, ctx, mask1=null, track, tctx, centre=[], checks=[];
+  let W=0,H=0,dpr=1, ctx, mask1=null, track, tctx, centre=[], checks=[], joints=[];
   function fit(){ dpr=Math.min(devicePixelRatio||1, LITE?1:1.25); const r=sim.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
     sim.width=W*dpr; sim.height=H*dpr; ctx=sim.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
     mask1=new Uint8Array(W*H);
@@ -53,6 +53,7 @@
     for(let i=0;i<STEPS;i++){ const th=i/STEPS*6.2832, rad=R*(1+0.25*Math.sin(k1*th+a1)+0.13*Math.sin(k2*th+a2));
       const x=cx+Math.cos(th)*rad, y=cy+Math.sin(th)*rad*0.78; centre.push({x,y,tx:x,ty:y,vx:0,vy:0}); }
     checks=[]; for(let i=0;i<STEPS;i+=4) checks.push(centre[i]);
+    joints=[]; for(let i=0;i<STEPS;i+=JOINT_STEP) joints.push(i);
     active=false; dragging=false; dragIdx=-1;
     stampMask(); renderTrack(true);
   }
@@ -78,26 +79,36 @@
     c.strokeStyle=g; c.lineWidth=CHAN_W; pathCentre(c); c.stroke();
     if(full){ c.strokeStyle='rgba(94,234,212,0.18)'; c.lineWidth=1.5; c.setLineDash([2,7]); pathCentre(c); c.stroke(); c.setLineDash([]);
       for(let i=0;i<checks.length;i+=3){ const p=checks[i]; c.fillStyle='rgba(251,146,60,0.7)'; c.beginPath(); c.arc(p.x,p.y,2.2,0,7); c.fill(); } }
+    // draggable joint handles — always drawn so they track the live shape while sculpting
+    for(let j=0;j<joints.length;j++){ const p=centre[joints[j]], on=(joints[j]===dragIdx);
+      c.beginPath(); c.arc(p.x,p.y, on?7:4.5, 0,7); c.fillStyle= on?'rgba(125,240,220,0.95)':'rgba(10,22,34,0.8)';
+      c.fill(); c.lineWidth= on?2:1.6; c.strokeStyle='rgba(125,240,220,'+(on?1:0.7)+')'; c.stroke(); }
   }
 
   // ---- buoyant soft body: each centreline node springs toward its (sculpted) target, with damping ----
   let dragging=false, dragIdx=-1, active=false, lastPx=0, lastPy=0, trackDirty=false;
-  function settle(){ let mv=0;
+  // springs toward the sculpted targets, clamped to the canvas so the course can never leave view
+  function settle(){ let mv=0; const lo=HALF, hiX=W-HALF, hiY=H-HALF;
     for(let i=0;i<centre.length;i++){ const p=centre[i];
       p.vx=(p.vx+(p.tx-p.x)*SPRING_K)*DAMP; p.vy=(p.vy+(p.ty-p.y)*SPRING_K)*DAMP;
-      p.x+=p.vx; p.y+=p.vy; const s=p.vx*p.vx+p.vy*p.vy; if(s>mv) mv=s; }
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<lo){p.x=lo;p.vx=0;} else if(p.x>hiX){p.x=hiX;p.vx=0;}
+      if(p.y<lo){p.y=lo;p.vy=0;} else if(p.y>hiY){p.y=hiY;p.vy=0;}
+      const s=p.vx*p.vx+p.vy*p.vy; if(s>mv) mv=s; }
     return mv; }
   function ptrPos(e){ const r=sim.getBoundingClientRect(); return [ (e.clientX-r.left)*(W/r.width), (e.clientY-r.top)*(H/r.height) ]; }
-  function nearestIdx(x,y,maxd2){ let bi=-1, bd=maxd2; for(let i=0;i<centre.length;i++){ const dx=centre[i].x-x, dy=centre[i].y-y, d=dx*dx+dy*dy; if(d<bd){ bd=d; bi=i; } } return bi; }
+  // grabbing is by joint only: returns the centreline index of the nearest joint within reach, else -1
+  function nearestJoint(x,y,maxd2){ let bi=-1, bd=maxd2; for(let j=0;j<joints.length;j++){ const p=centre[joints[j]]; const dx=p.x-x, dy=p.y-y, d=dx*dx+dy*dy; if(d<bd){ bd=d; bi=joints[j]; } } return bi; }
   if(matchMedia('(pointer:fine)').matches && !reduce){
-    sim.style.cursor='grab'; sim.style.touchAction='none';
-    sim.addEventListener('pointerdown', e=>{ const p=ptrPos(e); const i=nearestIdx(p[0],p[1],GRAB2); if(i<0) return;
+    sim.style.cursor='grab'; sim.style.touchAction='none'; const lo=HALF;
+    sim.addEventListener('pointerdown', e=>{ const p=ptrPos(e); const i=nearestJoint(p[0],p[1],GRAB2); if(i<0) return;
       dragging=true; dragIdx=i; active=true; lastPx=p[0]; lastPy=p[1]; sim.style.cursor='grabbing'; try{sim.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); });
     sim.addEventListener('pointermove', e=>{ const p=ptrPos(e);
-      if(!dragging){ sim.style.cursor = nearestIdx(p[0],p[1],GRAB2)>=0?'grab':'default'; return; }
-      const dx=p[0]-lastPx, dy=p[1]-lastPy, N=centre.length;
+      if(!dragging){ sim.style.cursor = nearestJoint(p[0],p[1],GRAB2)>=0?'grab':'default'; return; }
+      const dx=p[0]-lastPx, dy=p[1]-lastPy, N=centre.length, hiX=W-HALF, hiY=H-HALF;
       for(let i=0;i<N;i++){ let d=i-dragIdx; if(d<0) d=-d; if(d>N-d) d=N-d; const w=Math.exp(-(d*d)/SIGMA2); if(w<0.01) continue;
-        centre[i].tx+=dx*w; centre[i].ty+=dy*w; }
+        const q=centre[i]; q.tx+=dx*w; q.ty+=dy*w;
+        if(q.tx<lo)q.tx=lo; else if(q.tx>hiX)q.tx=hiX; if(q.ty<lo)q.ty=lo; else if(q.ty>hiY)q.ty=hiY; }
       lastPx=p[0]; lastPy=p[1]; active=true; });
     const endDrag=e=>{ if(!dragging) return; dragging=false; dragIdx=-1; sim.style.cursor='grab'; try{sim.releasePointerCapture(e.pointerId);}catch(_){} };
     sim.addEventListener('pointerup', endDrag); sim.addEventListener('pointercancel', endDrag);

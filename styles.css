@@ -192,6 +192,17 @@
   .spawn-item .pcg.w{ color:#f8f8f5; text-shadow:0 1px 2px rgba(0,0,0,0.5), 0 0 1px rgba(0,0,0,0.5); }
   .spawn-item .pcg.bk{ color:#2a2a2a; text-shadow:0 1px 1px rgba(255,255,255,0.15); }
   .spawn-item .ico{ height:44px; width:auto; max-width:120px; display:block; pointer-events:none; -webkit-user-drag:none; user-select:none; }
+  /* drop-to-delete bin: shown only while conjured objects exist; lid flips open and turns red when armed */
+  .trash{ position:fixed; right:24px; bottom:24px; z-index:150; width:58px; height:58px; display:flex; align-items:center; justify-content:center;
+    border-radius:18px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.18);
+    -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); box-shadow:0 14px 30px -12px rgba(0,0,0,0.6);
+    color:#cdd6e0; pointer-events:none; opacity:0; transform:translateY(14px) scale(0.85);
+    transition:opacity .26s ease, transform .3s var(--spring), color .2s, background .2s, border-color .2s, box-shadow .2s; }
+  .trash.show{ opacity:1; transform:none; }
+  .trash svg{ width:28px; height:28px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; overflow:visible; }
+  .trash-lid{ transform-box:fill-box; transform-origin:86% 100%; transition:transform .22s cubic-bezier(.34,1.56,.64,1); }
+  .trash.armed{ color:#fecaca; background:rgba(248,113,113,0.16); border-color:rgba(248,113,113,0.55); box-shadow:0 18px 40px -12px rgba(248,113,113,0.45); transform:scale(1.1); }
+  .trash.armed .trash-lid{ transform:rotate(-24deg) translateY(-10%); }
 
   .about-panel{ padding:46px 48px; }
   .about-panel p{ font-size:1.08rem; color:var(--text); font-weight:300; max-width:64ch; position:relative; z-index:2; }
