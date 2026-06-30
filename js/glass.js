@@ -25,7 +25,7 @@
     } else filter=el._lgFilter;
     filter.setAttribute('width',w); filter.setAttribute('height',h); el._lgFe.setAttribute('width',w); el._lgFe.setAttribute('height',h); el._lgFe.setAttribute('x','0'); el._lgFe.setAttribute('y','0');
     el._lgFe.setAttributeNS('http://www.w3.org/1999/xlink','href',url); el._lgFe.setAttribute('href',url); el._lgDm.setAttribute('scale',scale);
-    el.style.backdropFilter=`blur(10px) saturate(195%) brightness(1.14) url(#${id})`;
+    el.style.backdropFilter=`blur(10px) saturate(135%) brightness(1.0) url(#${id})`;
   }
   if(isChromium){ const targets=[...document.querySelectorAll('[data-glass]')]; const run=()=>targets.forEach(applyGlass);
     requestAnimationFrame(()=>requestAnimationFrame(run)); addEventListener('load',run);
