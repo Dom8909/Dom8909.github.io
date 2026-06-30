@@ -78,21 +78,21 @@
   <section id="work" class="wrap">
     <div class="head reveal"><h2>Selected work</h2></div>
     <div class="grid">
-      <div class="reveal neuro-card"><article class="lg card">
-        <div class="neuro-wrap">
-          <div class="neuro-stage">
-            <canvas id="neuroSim"></canvas>
-            <div class="neuro-hud"><span id="neuroGen">Gen 1</span> · <span id="neuroAlive">60 alive</span> · <span id="neuroBest">best 0</span></div>
+      <div class="reveal gacha-card"><article class="lg card">
+        <div class="gacha-wrap">
+          <div class="gacha-stage">
+            <canvas id="gachaBin"></canvas>
+            <div class="gacha-hud"><span id="gachaSparks">0</span> sparks</div>
           </div>
-          <div class="neuro-panel">
-            <div class="tags"><span class="tag">Neural network</span><span class="tag">Genetic algorithm</span></div>
-            <h3>Neuroevolution</h3>
-            <p>A fleet of vessels learns to run the channel on its own. Each one is steered by a small neural network I wrote from scratch, and the fleet improves every generation through a genetic algorithm. No training data, no libraries.</p>
-            <canvas id="neuroBrain" class="neuro-brain"></canvas>
-            <div class="neuro-cap">the leader's network, firing live</div>
-            <div class="neuro-ctrl">
-              <button class="chess-new" id="neuroSpeed">Speed: 1×</button>
-              <button class="chess-new" id="neuroNew">New course</button>
+          <div class="gacha-panel">
+            <div class="tags"><span class="tag">Physics</span><span class="tag">Merge game</span></div>
+            <h3>Fusion</h3>
+            <p>Drop orbs into the bin — two of the same kind fuse into the next, from Common all the way to Celestial. Every fusion pays out sparks; bank enough and summon a rarer orb. The 2D physics is hand-rolled — gravity and collisions from scratch, no engine.</p>
+            <div class="gacha-ladder" id="gachaLadder"></div>
+            <div class="gacha-cap">click the bin to drop · fuse to climb the ladder</div>
+            <div class="gacha-ctrl">
+              <button class="chess-new" id="gachaSummon">Summon ⚡24</button>
+              <button class="chess-new" id="gachaReset">Clear bin</button>
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@
 <script src="js/ui.js"></script>
 <script src="js/glass.js"></script>
 <script src="js/demos.js"></script>
-<script src="js/neuro.js"></script>
+<script src="js/gacha.js"></script>
 <script src="js/chess.js"></script>
 <script src="js/conjure.js"></script>
 </body>
