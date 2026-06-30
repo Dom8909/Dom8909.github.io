@@ -8,7 +8,18 @@
     c.addEventListener('pointermove',move,{passive:true}); c.addEventListener('pointerdown',down,{passive:true}); c.addEventListener('pointerleave',leave,{passive:true});
     return ()=>{ c.removeEventListener('pointermove',move); c.removeEventListener('pointerdown',down); c.removeEventListener('pointerleave',leave); };
   }
-  function runWhenVisible(c,start){ let stop=null; new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&!stop){stop=start();} else if(!en.isIntersecting&&stop){stop();stop=null;} }); },{threshold:0.05}).observe(c); }
+  function runWhenVisible(c,start){ let stop=null;
+    new IntersectionObserver(es=>{ es.forEach(en=>{ if(en.isIntersecting&&!stop){stop=start();} else if(!en.isIntersecting&&stop){stop();stop=null;} }); },{threshold:0.05}).observe(c);
+    // Re-fit if the canvas changes size after it first ran (layout settle, font reflow, window resize,
+    // zoom / DPI change). Without this the interactive grid stays sized to the original canvas and part
+    // of it — typically the lower rows — stops responding.
+    if('ResizeObserver' in window){ let pw=0, ph=0, t=0;
+      new ResizeObserver(es=>{ const r=es[es.length-1].contentRect;
+        if(pw===0&&ph===0){ pw=r.width; ph=r.height; return; }
+        if(Math.abs(r.width-pw)<1 && Math.abs(r.height-ph)<1) return; pw=r.width; ph=r.height;
+        clearTimeout(t); t=setTimeout(()=>{ if(stop){ stop(); stop=start(); } }, 160); }).observe(c);
+    }
+  }
 
   // A* on a 4-neighbour grid (Manhattan heuristic). Returns the expansion order and the path.
   function astar(nc,nr,wall,si,gi){ const open=[]; const g={},f={},came={},closed=new Uint8Array(nc*nr),inOpen=new Uint8Array(nc*nr);
