@@ -23,29 +23,19 @@ document.getElementById('year').textContent = new Date().getFullYear();
   const fineP=matchMedia('(pointer:fine)').matches;
   if(fineP && !reduce && isChromium){
     document.documentElement.classList.add('tilt-on');
-    document.querySelectorAll('[data-tilt]').forEach(card=>{ const max=5;
-      // Decide everything from a geometry snapshot taken when the pointer enters, never from
-      // the live (tilted) layout. The tilt shifts the card, so a live hit-test would flip what
-      // is under the cursor, which would flip the tilt, which would shift the card again: that
-      // feedback is what made the tilt and the cursor flicker over the interactive displays.
-      let base=null, zones=[];
-      // measure from a forced-flat card so the zones are always from the untilted layout, and cache
-      // each display's own cursor so it can be forced onto the whole card while the pointer is over it
-      function snapshot(){ card.style.transition='none'; card.style.transform='';
-        base=card.getBoundingClientRect();
-        zones=[].map.call(card.querySelectorAll('.preview, .chess-board'), el=>{ const r=el.getBoundingClientRect();
-          return { l:r.left, r:r.right, t:r.top, b:r.bottom, cur:getComputedStyle(el).cursor }; }); }
-      function displayCursor(x,y){ for(const z of zones){ if(x>=z.l&&x<=z.r&&y>=z.t&&y<=z.b) return z.cur||'crosshair'; } return ''; }
-      card.addEventListener('pointerenter', e=>{ if(e.pointerType!=='touch') snapshot(); });
-      card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; if(!base) snapshot();
-        const cur=displayCursor(e.clientX,e.clientY);
-        // over a display: stay flat and force the display's cursor onto the whole card, so the card
-        // body (which the tilt can momentarily slide under a fast-moving pointer) shows it too
-        if(cur){ card.style.transition='none'; card.style.transform=''; card.style.cursor=cur; return; }
-        card.style.transition=''; card.style.cursor='';
-        const px=(e.clientX-base.left)/base.width, py=(e.clientY-base.top)/base.height;
-        card.style.transform=`rotateY(${(px-0.5)*max*2}deg) rotateX(${-(py-0.5)*max*2}deg) translateY(-4px)`; }, {passive:true});
-      card.addEventListener('pointerleave', ()=>{ card.style.transition=''; card.style.transform=''; card.style.cursor=''; base=null; });
+    // Apple-style hover tilt: the WHOLE card tilts uniformly toward the cursor — like Apple's product
+    // cards, there is no per-region special-casing. That is deliberate: any "flat over the display,
+    // tilt over the body" scheme has a boundary where the tilt shifts the canvas under the cursor and
+    // flips the live cursor hit-test, which is what flickered. With one uniform transform nothing
+    // toggles, so the cursor stays steady and no JS ever touches it. The angle is read from a rect
+    // cached on enter (so the tilt can't feed back on itself), and a gentle 5deg keeps the interactive
+    // canvases accurately mappable — a couple of pixels at the very edges, ~0 near the centre.
+    document.querySelectorAll('[data-tilt]').forEach(card=>{ const MAX=5; let base=null;
+      card.addEventListener('pointerenter', e=>{ if(e.pointerType==='touch') return; base=card.getBoundingClientRect(); card.style.transition='transform 0.12s ease-out'; });
+      card.addEventListener('pointermove', e=>{ if(e.pointerType==='touch') return; if(!base) base=card.getBoundingClientRect();
+        const px=(e.clientX-base.left)/base.width-0.5, py=(e.clientY-base.top)/base.height-0.5;
+        card.style.transform=`rotateY(${(px*MAX*2).toFixed(2)}deg) rotateX(${(-py*MAX*2).toFixed(2)}deg) translateY(-6px)`; }, {passive:true});
+      card.addEventListener('pointerleave', ()=>{ card.style.transition='transform 0.5s cubic-bezier(0.22,1,0.36,1)'; card.style.transform=''; base=null; });
     });
   }
 
