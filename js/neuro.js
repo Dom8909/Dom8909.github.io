@@ -42,7 +42,8 @@
 
   // ---- course: a winding closed channel; a 1-byte mask (re)stamped from the live centreline ----
   let W=0,H=0,dpr=1, ctx, mask1=null, track, tctx, centre=[], checks=[], joints=[];
-  function fit(){ dpr=Math.min(devicePixelRatio||1, LITE?1:1.25); const r=sim.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
+  // 1x backing store: the sim is fill-bound and animated (not text), so a low resolution keeps GPU fill cost down
+  function fit(){ dpr=Math.min(devicePixelRatio||1, 1); const r=sim.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
     sim.width=W*dpr; sim.height=H*dpr; ctx=sim.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
     mask1=new Uint8Array(W*H);
     track=document.createElement('canvas'); track.width=W*dpr; track.height=H*dpr; tctx=track.getContext('2d');
@@ -180,13 +181,20 @@
   }
   function draw(){
     ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(track,0,0); ctx.setTransform(dpr,0,0,dpr,0,0);
-    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=1.4;
-    for(let i=0;i<POP;i++){ const a=agents[i]; if(!a.alive||a.trail.length<4) continue; ctx.beginPath(); ctx.moveTo(a.trail[0],a.trail[1]); for(let k=2;k<a.trail.length;k+=2) ctx.lineTo(a.trail[k],a.trail[k+1]); ctx.stroke(); }
+    // wakes: one batched path for the whole fleet instead of a stroke per vessel
+    ctx.strokeStyle='rgba(255,255,255,0.10)'; ctx.lineWidth=1.4; ctx.beginPath();
+    for(let i=0;i<POP;i++){ const a=agents[i]; if(!a.alive||a.trail.length<4) continue; ctx.moveTo(a.trail[0],a.trail[1]); for(let k=2;k<a.trail.length;k+=2) ctx.lineTo(a.trail[k],a.trail[k+1]); }
+    ctx.stroke();
     if(leader){ for(let i=0;i<N_SENS;i++){ const an=leader.h+SENS_ANG[i], d=leader.sens[i]*SENS_RANGE;
       ctx.strokeStyle='rgba(94,234,212,'+(0.15+(1-leader.sens[i])*0.5)+')'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(leader.x,leader.y); ctx.lineTo(leader.x+Math.cos(an)*d,leader.y+Math.sin(an)*d); ctx.stroke(); } }
-    for(let i=0;i<POP;i++){ const a=agents[i]; if(a.alive && a!==leader) vessel(ctx,a,false); }
+    // fleet vessels: one batched path + fill (no save/translate/rotate/fill per vessel)
+    ctx.fillStyle='rgba(190,228,255,0.85)'; ctx.beginPath();
+    for(let i=0;i<POP;i++){ const a=agents[i]; if(!a.alive || a===leader) continue;
+      const cs=Math.cos(a.h), sn=Math.sin(a.h), x=a.x, y=a.y;
+      ctx.moveTo(x+6*cs, y+6*sn); ctx.lineTo(x-4*cs-3*sn, y-4*sn+3*cs); ctx.lineTo(x-2.5*cs, y-2.5*sn); ctx.lineTo(x-4*cs+3*sn, y-4*sn-3*cs); ctx.closePath(); }
+    ctx.fill();
     if(leader) vessel(ctx,leader,true);
-    drawBrain();
+    if((brainEvery++ % 3)===0) drawBrain();   // brain-cam is the heaviest draw and slow-changing; refresh it ~1/3 as often
     if(elGen){ let al=0; for(let i=0;i<POP;i++) if(agents[i].alive) al++; elGen.textContent='Gen '+gen; elAlive.textContent=al+' alive'; elBest.textContent='best '+best.toFixed(0); }
   }
   function drawBrain(){ if(!brain || !leader) return; const bc=brain.getContext('2d'), bw=brain.width, bh=brain.height; bc.clearRect(0,0,bw,bh);
@@ -205,7 +213,7 @@
 
   // runtime guard: the sim always ticks, but renders less often if frames run slow (which cuts the
   // dominant compositing cost) and only then shrinks the fleet, keeping the whole page responsive.
-  let fAcc=0, fCnt=0, fPrev=0, ready=false, running=false, skip=0, fc=0;
+  let fAcc=0, fCnt=0, fPrev=0, brainEvery=0, ready=false, running=false, skip=0, fc=0;
   function loop(ts){
     if(!running) return;
     if(fPrev){ fAcc+=ts-fPrev; if(++fCnt>=45){ const avg=fAcc/fCnt; fAcc=0; fCnt=0;
