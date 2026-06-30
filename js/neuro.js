@@ -33,7 +33,8 @@
 
   // ---- course (a winding closed channel rendered to an offscreen mask) ----
   let W=0,H=0,dpr=1, ctx, mask, mctx, maskData, track, centre=[], checks=[], start, startH;
-  function fit(){ dpr=Math.min(devicePixelRatio||1, LITE?1.5:2); const r=sim.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
+  // the sim is fill-bound, so cap the backing-store resolution low (it is animated, not text)
+  function fit(){ dpr=Math.min(devicePixelRatio||1, LITE?1:1.25); const r=sim.getBoundingClientRect(); W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
     sim.width=W*dpr; sim.height=H*dpr; ctx=sim.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
     mask=document.createElement('canvas'); mask.width=W; mask.height=H; mctx=mask.getContext('2d');
     track=document.createElement('canvas'); track.width=W*dpr; track.height=H*dpr;
@@ -106,7 +107,7 @@
 
   // ---- rendering ----
   function vessel(c,a,lead){ c.save(); c.translate(a.x,a.y); c.rotate(a.h);
-    if(lead){ c.fillStyle='#fbbf24'; c.shadowBlur=8; c.shadowColor='#fbbf24'; } else { c.fillStyle='rgba(190,228,255,0.85)'; }
+    c.fillStyle = lead?'#fbbf24':'rgba(190,228,255,0.85)';
     c.beginPath(); c.moveTo(6,0); c.lineTo(-4,3); c.lineTo(-2.5,0); c.lineTo(-4,-3); c.closePath(); c.fill(); c.restore();
   }
   function draw(){
@@ -138,18 +139,30 @@
       bc.strokeStyle='rgba(255,255,255,0.25)'; bc.lineWidth=dpr; bc.stroke(); }
   }
 
-  // runtime FPS guard: if frames run slow on a weak device, shrink the fleet so it stays smooth
-  let fAcc=0, fCnt=0, fPrev=0;
+  // runtime guard: the sim always ticks, but if frames run slow it renders less often (which
+  // cuts the dominant compositing cost) and, only if still slow, shrinks the fleet. This keeps
+  // the whole page responsive on weak hardware without blocking the main thread.
+  let fAcc=0, fCnt=0, fPrev=0, ready=false, running=false, skip=0, fc=0;
   function loop(ts){
-    if(fPrev){ fAcc+=ts-fPrev; if(++fCnt>=60){ if(fAcc/fCnt>34 && POP>26){ POP-=10; if(agents.length>POP) agents.length=POP; } fAcc=0; fCnt=0; } }
+    if(!running) return;
+    if(fPrev){ fAcc+=ts-fPrev; if(++fCnt>=45){ const avg=fAcc/fCnt; fAcc=0; fCnt=0;
+      if(avg>24){ if(skip<3) skip++; else if(POP>26){ POP-=8; if(agents.length>POP) agents.length=POP; } }
+      else if(avg<14 && skip>0) skip--; } }
     fPrev=ts;
-    for(let s=0;s<speedMul;s++) tick(); draw(); raf=requestAnimationFrame(loop);
+    for(let s=0;s<speedMul;s++) tick();
+    if((fc++ % (skip+1))===0) draw();
+    raf=requestAnimationFrame(loop);
   }
-  function start_(){ fit(); buildCourse(); spawn(); if(reduce){ draw(); return; } raf=requestAnimationFrame(loop); }
+  function resume(){ if(running||reduce) return; running=true; fPrev=0; raf=requestAnimationFrame(loop); }
+  function pause(){ running=false; if(raf){ cancelAnimationFrame(raf); raf=null; } }
 
   if(btnSpeed) btnSpeed.addEventListener('click', ()=>{ speedMul = speedMul===1?3:1; btnSpeed.textContent='Speed: '+speedMul+'×'; });
   if(btnNew) btnNew.addEventListener('click', ()=>{ buildCourse(); spawn(); });
 
-  // start when the card scrolls into view
-  new IntersectionObserver((es,ob)=>{ es.forEach(e=>{ if(e.isIntersecting){ start_(); ob.disconnect(); } }); },{threshold:0.15}).observe(sim);
+  // run only while the card is on screen; go fully idle (no rAF, no work) when it is not
+  new IntersectionObserver(es=>{ es.forEach(e=>{
+    if(e.isIntersecting){ if(!ready){ ready=true; fit(); buildCourse(); spawn(); if(reduce){ draw(); return; } } resume(); }
+    else pause();
+  }); },{threshold:0.1}).observe(sim);
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) pause(); else if(ready) resume(); });
 })();
