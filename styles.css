@@ -136,9 +136,9 @@
   .gacha-card{ grid-column:1/-1; }
   .gacha-wrap{ position:relative; z-index:3; display:flex; gap:30px; padding:26px; align-items:stretch; }
   @media(max-width:760px){ .gacha-wrap{ flex-direction:column; gap:18px; padding:18px; } }
-  .gacha-stage{ position:relative; flex:1.4; min-width:0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); background:#0a1420; }
-  .gacha-stage canvas{ display:block; width:100%; height:360px; }
-  @media(max-width:760px){ .gacha-stage canvas{ height:300px; } }
+  .gacha-stage{ position:relative; flex:2.1; min-width:0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); background:#0a1420; }
+  .gacha-stage canvas{ display:block; width:100%; height:410px; }
+  @media(max-width:760px){ .gacha-stage canvas{ height:340px; } }
   .gacha-hud{ position:absolute; top:10px; right:11px; font-family:"JetBrains Mono",monospace; font-size:0.66rem; letter-spacing:0.04em; color:var(--frost); background:rgba(10,12,24,0.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); padding:5px 11px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); }
   .gacha-hud span{ color:var(--aqua); font-weight:600; }
   .gacha-panel{ flex:1; min-width:0; display:flex; flex-direction:column; }
