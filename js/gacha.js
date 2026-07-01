@@ -1,117 +1,137 @@
-// Fusion: a physics merge game. Drop orbs into the bin; two of the same tier fuse into the next, so
-// you climb from Common to Celestial. Fusions pay out sparks, which fund higher-tier summons. The 2D
-// physics (gravity + circle collisions resolved by positional relaxation) is written from scratch and
-// runs on a fixed timestep with pooled objects, so it stays smooth on any device and never allocates
-// inside the loop. Progress is saved to localStorage with an integrity check (tamper-evident, not secure).
+// Fusion: a Suika-style merge game. Drop orbs into the bin; two of the same tier fuse into the next,
+// climbing the ladder from Common to Celestial and scoring as you go — bigger fusions score far more.
+// Let the pile spill over the top line and it's game over; your best run is saved. The 2D physics
+// (gravity + circle collisions resolved by positional relaxation) is written from scratch, runs on a
+// fixed timestep, and is pooled, so it never allocates in the loop and stays smooth on any device.
+// High score persists in localStorage behind an integrity checksum (tamper-evident, not secure).
 (function(){
   const reduce = PF.reduce;
   const bin = document.getElementById('gachaBin'); if(!bin) return;
-  const elSparks = document.getElementById('gachaSparks'), elBest = document.getElementById('gachaBest');
+  const elScore = document.getElementById('gachaScore'), elBest = document.getElementById('gachaBest');
   const elLadder = document.getElementById('gachaLadder');
-  const btnSummon = document.getElementById('gachaSummon'), btnReset = document.getElementById('gachaReset');
+  const btnNew = document.getElementById('gachaNew');
 
   const COLORS=['#9aa7b8','#5eead4','#38bdf8','#a78bfa','#f472b6','#fb923c','#fbe36b'];
   const NAMES=['Common','Uncommon','Rare','Epic','Mythic','Legendary','Celestial'];
   const NT=COLORS.length, MAXT=NT-1;
-  const G=0.55, REST=0.18, ITER=5, MAX_ORBS=70, SUMMON_COST=24, STEP=1000/60;
-  const SALT='fusion-v1-7c3';
+  const G=0.55, REST=0.18, ITER=5, MAX_ORBS=90, STEP=1000/60, GRACE=48;
+  const SALT='fusion-v2-7c3';
 
-  let W=0,H=0,dpr=1,ctx, unit=16, dangerY=0;
-  function rad(t){ return unit*Math.pow(1.255,t); }
+  let W=0,H=0,dpr=1,ctx, unit=16, lineY=0, PW=0, wx0=0, wx1=0;   // PW = narrow play column, centred, with walls
+  function rad(t){ return unit*Math.pow(1.22,t); }
 
-  // ---- pooled orbs + merge effects (the loop never allocates) ----
-  const orbs=[]; for(let i=0;i<MAX_ORBS+8;i++) orbs.push({x:0,y:0,vx:0,vy:0,r:0,t:0,pop:1,merged:false,alive:false});
+  // pooled orbs + effects (the loop never allocates)
+  const orbs=[]; for(let i=0;i<MAX_ORBS+8;i++) orbs.push({x:0,y:0,vx:0,vy:0,r:0,t:0,pop:1,alive:false,sl:0,slv:0,pvx:0,pvy:0,age:0});
   const fx=[]; for(let i=0;i<48;i++) fx.push({x:0,y:0,vx:0,vy:0,r:0,life:0,max:1,c:'',ring:false});
   function freeOrb(){ for(const o of orbs) if(!o.alive) return o; return null; }
-  function alive(){ let n=0; for(const o of orbs) if(o.alive) n++; return n; }
   function ring(x,y,r,c){ for(const f of fx){ if(f.life<=0){ f.x=x;f.y=y;f.r=r;f.c=c;f.ring=true;f.life=f.max=20; return; } } }
   function spark(x,y,c){ for(const f of fx){ if(f.life<=0){ const a=Math.random()*6.28,s=1.5+Math.random()*2.5;
     f.x=x;f.y=y;f.vx=Math.cos(a)*s;f.vy=Math.sin(a)*s-1;f.r=1.5+Math.random()*2;f.c=c;f.ring=false;f.life=f.max=24+Math.random()*10; return; } } }
 
-  let sparks=20, best=0, nextT=0, prevX=0, hovering=false, full=false;
+  let score=0, high=0, best=0, nextT=0, prevX=0, hovering=false, dead=false, overTime=0;
 
-  // ---- save (tamper-EVIDENT: a checksum, not real security; the salt lives in this file) ----
+  // save (tamper-EVIDENT checksum, not real security; the salt lives in this file)
   function fnv(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
-  function save(){ try{ const j=JSON.stringify({s:Math.round(sparks),b:best}); localStorage.setItem('fusion', btoa(j)+'.'+fnv(j+SALT)); }catch(_){ } }
+  function save(){ try{ const j=JSON.stringify({h:Math.round(high),b:best}); localStorage.setItem('fusion', btoa(j)+'.'+fnv(j+SALT)); }catch(_){ } }
   function load(){ try{ const raw=localStorage.getItem('fusion'); if(!raw) return; const i=raw.lastIndexOf('.'); if(i<0) return;
     const j=atob(raw.slice(0,i)); if(fnv(j+SALT)!==raw.slice(i+1)) return; const d=JSON.parse(j);
-    if(typeof d.s==='number') sparks=Math.max(0,Math.min(1e7,d.s)); if(typeof d.b==='number') best=Math.max(0,Math.min(MAXT,d.b|0)); }catch(_){ } }
+    if(typeof d.h==='number') high=Math.max(0,Math.min(1e8,d.h)); if(typeof d.b==='number') best=Math.max(0,Math.min(MAXT,d.b|0)); }catch(_){ } }
 
   function fit(){ dpr=Math.min(devicePixelRatio||1,1); const r=bin.getBoundingClientRect();
     W=Math.max(1,Math.round(r.width)); H=Math.max(1,Math.round(r.height));
     bin.width=W*dpr; bin.height=H*dpr; ctx=bin.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
-    unit=Math.max(11, Math.min(W,H)/19); dangerY=Math.max(34, H*0.13); prevX=W/2; }
+    PW=Math.min(W-16, Math.round(H*1.05)); wx0=Math.round((W-PW)/2); wx1=wx0+PW;
+    unit=Math.max(11, Math.min(PW,H)/13); lineY=Math.max(34, H*0.16); prevX=W/2; }
 
-  function drop(t,x){ if(full) return false; const o=freeOrb(); if(!o) return false;
-    o.alive=true; o.merged=false; o.t=t; o.r=rad(t); o.x=Math.max(o.r+2,Math.min(W-o.r-2,x)); o.y=Math.min(dangerY-o.r-2, o.r+6); o.vx=0; o.vy=0; o.pop=0.5;
-    return true; }
+  function roll(){ const r=Math.random(); return r<0.7?0 : r<0.93?1 : 2; }   // mostly small, like Suika
+  function drop(t,x){ if(dead) return; const o=freeOrb(); if(!o) return;
+    o.alive=true; o.t=t; o.r=rad(t); o.x=Math.max(wx0+o.r+1,Math.min(wx1-o.r-1,x)); o.y=o.r+3; o.vx=0; o.vy=0; o.pop=0.55; o.sl=0; o.slv=0; o.pvx=0; o.pvy=0; o.age=0; }
 
-  function merge(a,b){ const nt=Math.min(MAXT, a.t+1), mx=(a.x+b.x)/2, my=(a.y+b.y)/2, col=COLORS[a.t];
+  function merge(a,b){ const nt=Math.min(MAXT, a.t+1), mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
     a.alive=false; b.alive=false;
-    const reward=Math.round(2*Math.pow(1.9,a.t));
-    sparks+=reward; if(a.t>=best){ best=a.t; updateLadder(); }
-    ring(mx,my,rad(a.t),col); for(let k=0;k<5;k++) spark(mx,my,COLORS[nt]);
-    if(a.t<MAXT){ const o=freeOrb(); if(o){ o.alive=true; o.merged=false; o.t=nt; o.r=rad(nt); o.x=mx; o.y=my; o.vx=(a.vx+b.vx)*0.5; o.vy=Math.min(0,(a.vy+b.vy)*0.5)-1.5; o.pop=0; } }
-    else { sparks+=reward*4; if(best>=MAXT){ best=MAXT; } }   // fusing two top orbs cashes out + clears space
-    save(); }
+    score += Math.round(2*Math.pow(1.85, a.t));   // bigger fusions score far more
+    if(a.t>=best){ best=a.t; updateLadder(); }
+    ring(mx,my,rad(a.t),COLORS[a.t]); for(let k=0;k<5;k++) spark(mx,my,COLORS[nt]);
+    if(a.t<MAXT){ const o=freeOrb(); if(o){ o.alive=true; o.t=nt; o.r=rad(nt); o.x=mx; o.y=my; o.vx=(a.vx+b.vx)*0.5; o.vy=(a.vy+b.vy)*0.5-1.5; o.pop=0; o.sl=(a.sl+b.sl)*0.5; o.slv=0; o.pvx=o.vx; o.pvy=o.vy; o.age=30; } }
+    else { score += 500; }   // fusing two Celestial orbs is a jackpot
+  }
 
-  // ---- fixed-timestep physics: gravity, walls, then several relaxation passes of circle collisions ----
+  // fixed-timestep physics: gravity, walls, several relaxation passes of fusion + collisions, then overflow check
   function physics(){
-    for(const o of orbs){ if(!o.alive) continue;
+    for(const o of orbs){ if(!o.alive) continue; o.age++;
       o.vy+=G; o.vx*=0.992; o.x+=o.vx; o.y+=o.vy;
       if(o.pop<1){ o.pop+=0.12; if(o.pop>1) o.pop=1; }
-      if(o.x<o.r){ o.x=o.r; o.vx=-o.vx*REST; } else if(o.x>W-o.r){ o.x=W-o.r; o.vx=-o.vx*REST; }
+      if(o.x<wx0+o.r){ o.x=wx0+o.r; o.vx=-o.vx*REST; } else if(o.x>wx1-o.r){ o.x=wx1-o.r; o.vx=-o.vx*REST; }
       if(o.y>H-o.r){ o.y=H-o.r; o.vy=-o.vy*REST; o.vx*=0.9; }
     }
     for(let it=0; it<ITER; it++){
       for(let i=0;i<orbs.length;i++){ const a=orbs[i]; if(!a.alive) continue;
         for(let j=i+1;j<orbs.length;j++){ const b=orbs[j]; if(!b.alive) continue;
-          let dx=b.x-a.x, dy=b.y-a.y; let d2=dx*dx+dy*dy; const rr=a.r+b.r;
+          const dx=b.x-a.x, dy=b.y-a.y, d2=dx*dx+dy*dy, rr=a.r+b.r;
+          // same-tier orbs that are touching (small tolerance) fuse; break because `a` is now consumed
+          if(it===0 && a.t===b.t && d2 < rr*rr*1.12){ merge(a,b); break; }
           if(d2>=rr*rr || d2<=0.0001) continue;
-          const d=Math.sqrt(d2), nx=dx/d, ny=dy/d, ov=rr-d;
-          if(a.t===b.t && !a.merged && !b.merged && it===0 && d < rr*0.92){ a.merged=b.merged=true; merge(a,b); continue; }
-          if(!a.alive||!b.alive) continue;
-          const push=ov*0.5; a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
-          const rvn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;   // damp the approaching velocity along the normal
+          const d=Math.sqrt(d2), nx=dx/d, ny=dy/d, push=(rr-d)*0.5;
+          a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+          const rvn=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
           if(rvn<0){ const imp=rvn*(1+REST)*0.5; a.vx+=imp*nx; a.vy+=imp*ny; b.vx-=imp*nx; b.vy-=imp*ny; }
         }
       }
     }
-    // bin full if a settled orb pokes above the danger line
-    full=false; if(alive()>=MAX_ORBS) full=true; else for(const o of orbs){ if(o.alive && o.y-o.r<dangerY && Math.abs(o.vy)<0.6){ full=true; break; } }
+    // liquid slosh: the surface tilts against the orb's horizontal acceleration, then springs back level
+    for(const o of orbs){ if(!o.alive) continue; const ax=o.vx-o.pvx;
+      o.slv += -o.sl*0.05 - o.slv*0.14 - ax*0.045; o.sl+=o.slv;
+      if(o.sl>0.85) o.sl=0.85; else if(o.sl<-0.85) o.sl=-0.85; o.pvx=o.vx; o.pvy=o.vy; }
+    // overflow → game over: an orb that has been around a while (not a fresh drop passing through) is
+    // still poking above the line, i.e. the pile is stuck against the top; held past a short grace
+    let over=false; for(const o of orbs){ if(o.alive && o.age>18 && o.y-o.r<lineY){ over=true; break; } }
+    if(over){ if(++overTime>GRACE && !dead){ dead=true; if(score>high) high=score; save(); } } else overTime=0;
     for(const f of fx){ if(f.life<=0) continue; f.life--; if(!f.ring){ f.vy+=0.25; f.x+=f.vx; f.y+=f.vy; f.vx*=0.96; } }
-    sparks+=0.04;   // a slow trickle so you are never fully stuck
   }
 
-  // allocation-free glossy orb: glow halo + flat body + offset highlight + rim
-  function orb(o){ const r=o.r*(0.62+0.38*o.pop), c=COLORS[o.t];
-    ctx.globalAlpha=0.16; ctx.fillStyle=c; ctx.beginPath(); ctx.arc(o.x,o.y,r*1.16,0,7); ctx.fill(); ctx.globalAlpha=1;
-    ctx.fillStyle=c; ctx.beginPath(); ctx.arc(o.x,o.y,r,0,7); ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.34)'; ctx.beginPath(); ctx.arc(o.x-r*0.3,o.y-r*0.33,r*0.34,0,7); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(o.x,o.y,r-0.5,0,7); ctx.stroke();
+  // a glass orb with liquid inside: glow, faint shell, then the liquid clipped to the circle and filled
+  // below its tilted (sloshing) surface, a bright waterline, a highlight and a rim. No per-frame alloc.
+  function orb(o){ const r=o.r*(0.62+0.38*o.pop), c=COLORS[o.t], x=o.x, y=o.y;
+    ctx.globalAlpha=0.15; ctx.fillStyle=c; ctx.beginPath(); ctx.arc(x,y,r*1.16,0,7); ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle='rgba(255,255,255,0.05)'; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.clip();
+    const ux=Math.sin(o.sl), uy=-Math.cos(o.sl), px=Math.cos(o.sl), py=Math.sin(o.sl), so=r*0.2;
+    const sx=x+so*ux, sy=y+so*uy, L=r*2.2;
+    ctx.fillStyle=c; ctx.beginPath();
+    ctx.moveTo(sx+px*L, sy+py*L); ctx.lineTo(sx-px*L, sy-py*L);
+    ctx.lineTo(sx-px*L-ux*L, sy-py*L-uy*L); ctx.lineTo(sx+px*L-ux*L, sy+py*L-uy*L);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.42)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(sx+px*r, sy+py*r); ctx.lineTo(sx-px*r, sy-py*r); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='rgba(255,255,255,0.26)'; ctx.beginPath(); ctx.arc(x-r*0.32,y-r*0.34,r*0.26,0,7); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.28)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(x,y,r-0.5,0,7); ctx.stroke();
   }
   function render(){ ctx.clearRect(0,0,W,H);
     ctx.fillStyle='#0a1420'; ctx.fillRect(0,0,W,H);
-    // danger line
-    ctx.strokeStyle=full?'rgba(248,113,113,0.55)':'rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,6]);
-    ctx.beginPath(); ctx.moveTo(0,dangerY); ctx.lineTo(W,dangerY); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,255,255,0.022)'; ctx.fillRect(wx0,0,PW,H);
+    ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(wx0+0.5,0); ctx.lineTo(wx0+0.5,H); ctx.moveTo(wx1-0.5,0); ctx.lineTo(wx1-0.5,H); ctx.stroke();
+    const warn = overTime>0 || dead;
+    ctx.strokeStyle = warn?'rgba(248,113,113,0.6)':'rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.setLineDash([4,6]);
+    ctx.beginPath(); ctx.moveTo(wx0,lineY); ctx.lineTo(wx1,lineY); ctx.stroke(); ctx.setLineDash([]);
     for(const o of orbs) if(o.alive) orb(o);
-    // effects
     for(const f of fx){ if(f.life<=0) continue; const k=f.life/f.max;
       if(f.ring){ ctx.globalAlpha=k*0.7; ctx.strokeStyle=f.c; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(f.x,f.y,f.r*(1+(1-k)*1.4),0,7); ctx.stroke(); }
-      else { ctx.globalAlpha=k; ctx.fillStyle=f.c; ctx.beginPath(); ctx.arc(f.x,f.y,f.r*k,0,7); ctx.fill(); }
-    }
+      else { ctx.globalAlpha=k; ctx.fillStyle=f.c; ctx.beginPath(); ctx.arc(f.x,f.y,f.r*k,0,7); ctx.fill(); } }
     ctx.globalAlpha=1;
-    // next-orb preview at the drop line
-    if(hovering && !full){ const r=rad(nextT); ctx.globalAlpha=0.85; ctx.fillStyle=COLORS[nextT];
-      ctx.beginPath(); ctx.arc(Math.max(r+2,Math.min(W-r-2,prevX)), dangerY-r-6, r, 0, 7); ctx.fill(); ctx.globalAlpha=1;
-      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(prevX,dangerY); ctx.lineTo(prevX,H); ctx.stroke(); }
-    if(elSparks) elSparks.textContent=Math.round(sparks);
+    if(hovering && !dead){ const r=rad(nextT), x=Math.max(wx0+r+1,Math.min(wx1-r-1,prevX));
+      ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x,lineY); ctx.lineTo(x,H); ctx.stroke();
+      ctx.globalAlpha=0.85; ctx.fillStyle=COLORS[nextT]; ctx.beginPath(); ctx.arc(x, Math.max(r+3, lineY-r-8), r, 0, 7); ctx.fill(); ctx.globalAlpha=1; }
+    if(dead){ ctx.fillStyle='rgba(6,10,18,0.78)'; ctx.fillRect(0,0,W,H); ctx.textAlign='center';
+      ctx.fillStyle='#f4f4ef'; ctx.font='600 26px Inter, system-ui, sans-serif'; ctx.fillText('Game Over', W/2, H/2-16);
+      ctx.fillStyle='#9aa7b8'; ctx.font='15px Inter, system-ui, sans-serif'; ctx.fillText('Score '+score+'   ·   Best '+Math.max(high,score), W/2, H/2+9);
+      ctx.fillStyle='#5eead4'; ctx.font='12px "JetBrains Mono", monospace'; ctx.fillText('CLICK TO PLAY AGAIN', W/2, H/2+34); ctx.textAlign='left'; }
+    if(elScore) elScore.textContent=score; if(elBest) elBest.textContent=Math.max(high,score);
   }
 
   function updateLadder(){ if(!elLadder) return; let html='';
-    for(let t=0;t<NT;t++){ const on=t<=best; html+='<span class="rung'+(on?' on':'')+'" style="--c:'+COLORS[t]+'" title="'+NAMES[t]+'"></span>'; }
+    for(let t=0;t<NT;t++){ html+='<span class="rung'+(t<=best?' on':'')+'" style="--c:'+COLORS[t]+'" title="'+NAMES[t]+'"></span>'; }
     elLadder.innerHTML=html; }
+  function restart(){ for(const o of orbs) o.alive=false; for(const f of fx) f.life=0; score=0; dead=false; overTime=0; nextT=roll(); }
 
   // ---- loop (fixed-step physics, render every frame, idle when off-screen) ----
   let raf=null, running=false, acc=0, last=0;
@@ -128,16 +148,13 @@
   bin.addEventListener('pointermove', e=>{ hovering=true; prevX=localX(e); });
   bin.addEventListener('pointerenter', ()=>{ hovering=true; });
   bin.addEventListener('pointerleave', ()=>{ hovering=false; });
-  bin.addEventListener('pointerdown', e=>{ const x=localX(e); if(drop(nextT,x)){ nextT=Math.random()<0.12?1:0; } e.preventDefault(); });
-  if(btnSummon) btnSummon.addEventListener('click', ()=>{ if(full || sparks<SUMMON_COST) return; sparks-=SUMMON_COST;
-    const r=Math.random(), t=r<0.5?1:r<0.82?2:3; drop(t, W/2); save(); });
-  if(btnReset) btnReset.addEventListener('click', ()=>{ for(const o of orbs) o.alive=false; for(const f of fx) f.life=0; full=false; });
+  bin.addEventListener('pointerdown', e=>{ if(dead){ restart(); } else { drop(nextT, localX(e)); nextT=roll(); } e.preventDefault(); });
+  if(btnNew) btnNew.addEventListener('click', restart);
 
   // ---- boot ----
   let ready=false;
-  function boot(){ if(ready) return; ready=true; fit(); load(); updateLadder(); }
+  function boot(){ if(ready) return; ready=true; fit(); load(); nextT=roll(); updateLadder(); }
   new IntersectionObserver(es=>{ es.forEach(e=>{ if(e.isIntersecting){ boot(); start(); } else stop(); }); },{threshold:0.05}).observe(bin);
   document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stop(); else if(ready) start(); });
   if('ResizeObserver' in window){ let t=0; new ResizeObserver(()=>{ clearTimeout(t); t=setTimeout(()=>{ if(ready) fit(); }, 160); }).observe(bin); }
-  setInterval(save, 5000);
 })();

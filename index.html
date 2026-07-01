@@ -82,17 +82,16 @@
         <div class="gacha-wrap">
           <div class="gacha-stage">
             <canvas id="gachaBin"></canvas>
-            <div class="gacha-hud"><span id="gachaSparks">0</span> sparks</div>
+            <div class="gacha-hud">score <span id="gachaScore">0</span> · best <span id="gachaBest">0</span></div>
           </div>
           <div class="gacha-panel">
             <div class="tags"><span class="tag">Physics</span><span class="tag">Merge game</span></div>
             <h3>Fusion</h3>
-            <p>Drop orbs into the bin — two of the same kind fuse into the next, from Common all the way to Celestial. Every fusion pays out sparks; bank enough and summon a rarer orb. The 2D physics is hand-rolled — gravity and collisions from scratch, no engine.</p>
+            <p>Drop orbs and merge matching pairs to climb from Common all the way to Celestial — bigger fusions score far more. But don't let the pile spill over the top line, or it's game over. The 2D physics is hand-rolled — gravity, collisions, and the liquid sloshing inside each orb, all from scratch, no engine.</p>
             <div class="gacha-ladder" id="gachaLadder"></div>
-            <div class="gacha-cap">click the bin to drop · fuse to climb the ladder</div>
+            <div class="gacha-cap">click to drop · keep the pile below the line</div>
             <div class="gacha-ctrl">
-              <button class="chess-new" id="gachaSummon">Summon ⚡24</button>
-              <button class="chess-new" id="gachaReset">Clear bin</button>
+              <button class="chess-new" id="gachaNew">New game</button>
             </div>
           </div>
         </div>
