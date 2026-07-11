@@ -4,7 +4,7 @@
   (function(){
     const cv=document.getElementById('grid'); if(!cv) return; const ctx=cv.getContext('2d');
     function rr(x,y,w,h,r){ ctx.beginPath(); if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); } else { ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); } }
-    const cell=92, pad=8, rad=18, lw=4; let cols=0, dpr=1; const on=new Map(); let hoverKey=null;
+    const cell=92, pad=8, rad=18, lw=4; let cols=0, dpr=1; const on=new Map(), hits=new Map(); let hoverKey=null;
     // Full spectrum, ordered so each successive click on a tile jumps ~150 deg in hue (no two steps blend together).
     const palette=['#e05a5a','#3fbfae','#d45aa0','#9bd44a','#8a6ae0','#e8954a','#4ab9d4','#e05a82','#4ec07a','#b15ad4','#e6cf4a','#5a82e0'];
     function resize(){ dpr=Math.min(devicePixelRatio||1, matchMedia('(hover: none) and (pointer: coarse)').matches?1:2); cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); cols=Math.ceil(innerWidth/cell); draw(); }
@@ -44,10 +44,12 @@
       if(alive){ fwRaf=requestAnimationFrame(fwLoop); } else { fwRaf=null; draw(); } }
     addEventListener('resize', ()=>{ clearTimeout(window._gT); window._gT=setTimeout(resize,120); });
     addEventListener('click', e=>{ if(e.target.closest('.lg, canvas, a, button, .hero-copy, .spawn-item')) return; const r=Math.floor(e.clientY/cell), c=Math.floor(e.clientX/cell), key=r+','+c;
-      const next=(on.has(key)?palette.indexOf(on.get(key)):-1)+1;   // each tile steps through the palette on repeated clicks
-      if(next>=palette.length){ on.delete(key); }                   // past the last colour -> clear the tile
-      else { on.set(key, palette[next]); const m=checkMatch(r,c);
-        if(m){ for(let dr=0;dr<m.s;dr++)for(let dc=0;dc<m.s;dc++) on.delete((m.r0+dr)+','+(m.c0+dc)); if(!reduce) startFireworks(m.r0+(m.s-1)/2, m.c0+(m.s-1)/2, m.s); } }
+      if(!on.has(key)){ on.set(key, palette[Math.floor(Math.random()*palette.length)]); hits.set(key,1); }  // first tap starts on a random colour, so squares don't line up by accident
+      else { const n=(hits.get(key)||1)+1;                          // repeat taps step through the whole list in order, then clear
+        if(n>palette.length){ on.delete(key); hits.delete(key); draw(); return; }
+        on.set(key, palette[(palette.indexOf(on.get(key))+1)%palette.length]); hits.set(key,n); }
+      const m=checkMatch(r,c);
+      if(m){ for(let dr=0;dr<m.s;dr++)for(let dc=0;dc<m.s;dc++){ const k=(m.r0+dr)+','+(m.c0+dc); on.delete(k); hits.delete(k); } if(!reduce) startFireworks(m.r0+(m.s-1)/2, m.c0+(m.s-1)/2, m.s); }
       draw(); });
     if(matchMedia('(pointer:fine)').matches){ addEventListener('mousemove', e=>{ const over=e.target.closest('.lg, canvas, a, button, .hero-copy, .spawn-item'); const key=over?null:(Math.floor(e.clientY/cell)+','+Math.floor(e.clientX/cell)); if(key!==hoverKey){ hoverKey=key; if(!fwRaf) draw(); } }, {passive:true}); }
     resize();
