@@ -1,7 +1,10 @@
 // Canvas demos: shoal, pathfinder, wireframe, and portal.
 (function(){
   const reduce = PF.reduce;
-  function fit(c){ const dpr=Math.min(devicePixelRatio||1,2); const r=c.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; const ctx=c.getContext('2d'); ctx.scale(dpr,dpr); return {ctx,w:r.width,h:r.height}; }
+  // On touch / small screens (phones) these canvases are fill-bound: a 2-3x retina backing store is the
+  // main cost. Cap the backing to 1x, halve the render rate, thin the fleet, and drop the additive rays.
+  const coarse = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+  function fit(c){ const dpr=Math.min(devicePixelRatio||1, coarse?1:1.5); const r=c.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; const ctx=c.getContext('2d'); ctx.scale(dpr,dpr); return {ctx,w:r.width,h:r.height}; }
   function ptr(c,st){ const hint=c.parentNode.querySelector('.hint');
     const set=e=>{ const r=c.getBoundingClientRect(); st.x=e.clientX-r.left; st.y=e.clientY-r.top; st.on=true; if(hint&&!st._h){ st._h=true; hint.style.opacity=0; } };
     const move=e=>set(e), down=e=>{ set(e); st.click=true; }, leave=()=>{ st.on=false; };
@@ -35,7 +38,7 @@
 
   // Shoal: 3D boids with perspective projection; the pointer repels nearby fish.
   function flock(c){ return function(){ let {ctx,w,h}=fit(c);
-    const N=Math.max(26,Math.min(60,Math.round(w*h/3400)));
+    const N=Math.max(coarse?16:26, Math.min(coarse?30:60, Math.round(w*h/(coarse?5600:3400))));
     const DEPTH=420, FOCAL=440, cz=DEPTH/2;        // screen scale = FOCAL / (FOCAL + z)
     const MAX=2.4, MIN=1.2, PER=46, SEP=22;
     const F=[];
@@ -49,6 +52,7 @@
 
     function project(o){ const s=FOCAL/(FOCAL+o.z); return { sx:w/2+(o.x-w/2)*s, sy:h/2+(o.y-h/2)*s, s }; }
     function ocean(){ ctx.fillStyle=bg; ctx.fillRect(0,0,w,h);
+      if(coarse) return;   // skip the additive light-ray gradients on phones (costly composite + per-frame gradients)
       ctx.save(); ctx.globalCompositeOperation='lighter';
       for(let i=0;i<4;i++){ const x=w*(0.15+0.22*i)+Math.sin(t*0.005+i)*30, wd=34+i*10;
         const lg=ctx.createLinearGradient(x,0,x-60,h); lg.addColorStop(0,'rgba(140,225,255,0.10)'); lg.addColorStop(1,'rgba(140,225,255,0)');
@@ -87,7 +91,8 @@
       for(const o of bub){ o.y-=o.s; o.x+=Math.sin(t*0.02+o.y*0.05)*0.2; if(o.y<-4){ o.y=h+4; o.x=Math.random()*w; } ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,7); ctx.fill(); }
       order.sort((p,q)=>F[q].z-F[p].z); for(const i of order) fish(F[i]);
     }
-    function loop(){ step(); render(); raf=requestAnimationFrame(loop); }
+    let sk=0;
+    function loop(){ raf=requestAnimationFrame(loop); step(); if(!(coarse && (sk++&1))) render(); }   // physics every frame, render at half rate on phones
     if(reduce){ render(); return ()=>off(); }
     loop(); return ()=>{ cancelAnimationFrame(raf); off(); };
   };}
@@ -109,7 +114,9 @@
     function cellXY(i){ return {x:ox+(i%nc)*cell, y:oy+((i/nc|0))*cell}; }
     function dc(i,col){ const p=cellXY(i); ctx.fillStyle=col; ctx.fillRect(p.x+1,p.y+1,cell-2,cell-2); }
     let raf;
-    function frame(){ ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h);
+    let sk=0;
+    function frame(){ raf=requestAnimationFrame(frame); if(coarse && (sk++&1)) return;   // half-rate repaint on phones
+      ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h);
       for(let i=0;i<nc*nr;i++) dc(i, wall[i]?'rgba(255,255,255,0.11)':'rgba(255,255,255,0.03)');
       if(phase==='search'){ reveal=Math.min(res.order.length, reveal+Math.max(1,Math.round(res.order.length/55))); if(reveal>=res.order.length){ phase=res.path.length?'path':'done'; timer=0; } }
       const closedN=(phase==='search')?reveal:res.order.length;
@@ -120,7 +127,6 @@
       for(let k=0;k<pr;k++) dc(res.path[k],'rgba(167,139,250,0.85)');
       if(phase==='done'){ timer++; if(timer>150&&!down) randomWalls(); }
       dc(si,'#34d399'); dc(gi,'#fb7185');
-      raf=requestAnimationFrame(frame);
     }
     randomWalls();
     if(reduce){ phase='done'; reveal=res.order.length; pathRev=res.path.length; frame=function(){}; ctx.fillStyle='#06070f'; ctx.fillRect(0,0,w,h);
