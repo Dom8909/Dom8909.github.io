@@ -27,7 +27,8 @@
     el._lgFe.setAttributeNS('http://www.w3.org/1999/xlink','href',url); el._lgFe.setAttribute('href',url); el._lgDm.setAttribute('scale',scale);
     el.style.backdropFilter=`blur(10px) saturate(135%) brightness(1.0) url(#${id})`;
   }
-  if(isChromium){ const targets=[...document.querySelectorAll('[data-glass]')]; const run=()=>targets.forEach(applyGlass);
+  // Skip the (expensive) live backdrop refraction on touch devices; the CSS mobile rule handles them.
+  if(isChromium && !matchMedia('(hover: none) and (pointer: coarse)').matches){ const targets=[...document.querySelectorAll('[data-glass]')]; const run=()=>targets.forEach(applyGlass);
     requestAnimationFrame(()=>requestAnimationFrame(run)); addEventListener('load',run);
     if('ResizeObserver' in window){ const ro=new ResizeObserver(()=>{ clearTimeout(window._lgT); window._lgT=setTimeout(run,120); }); targets.forEach(t=>ro.observe(t)); }
   }

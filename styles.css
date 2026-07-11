@@ -43,6 +43,15 @@
     background-size:260% 260%; mix-blend-mode:screen; animation:lg-sheen 11s var(--ease) infinite; }
   @keyframes lg-sheen{ 0%{ background-position:135% 0; } 60%,100%{ background-position:-50% 0; } }
 
+  /* Phones: the double backdrop-filter glass and the infinite sheen are the biggest GPU cost on mobile
+     (both are recomposited on every scroll frame). Swap the glass for a flat frosted fill and drop the
+     sheen plus the pseudo layers. Scoped to hover-less touch devices, so desktop is completely untouched. */
+  @media (hover: none) and (pointer: coarse){
+    .lg{ background:rgba(255,255,255,0.055); -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+    .lg::before, .lg::after{ display:none !important; }
+    .hint, .spawn-item, .trash{ -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
+  }
+
   .wrap{ max-width:var(--maxw); margin:0 auto; padding:0 28px; }
   section{ scroll-margin-top:96px; }
   section.wrap{ padding-top:var(--s-sec); padding-bottom:var(--s-sec); }

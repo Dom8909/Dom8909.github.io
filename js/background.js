@@ -6,7 +6,7 @@
     function rr(x,y,w,h,r){ ctx.beginPath(); if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); } else { ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); } }
     const cell=92, pad=8, rad=18, lw=4; let cols=0, dpr=1; const on=new Map(); let hoverKey=null;
     const palette=['#e05a5a','#e8954a','#e6cf4a','#9bd44a','#4ec07a','#3fbfae','#4ab9d4','#5a82e0','#8a6ae0','#b15ad4','#d45aa0','#e05a82'];
-    function resize(){ dpr=Math.min(devicePixelRatio||1,2); cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); cols=Math.ceil(innerWidth/cell); draw(); }
+    function resize(){ dpr=Math.min(devicePixelRatio||1, matchMedia('(hover: none) and (pointer: coarse)').matches?1:2); cv.width=innerWidth*dpr; cv.height=innerHeight*dpr; cv.style.width=innerWidth+'px'; cv.style.height=innerHeight+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); cols=Math.ceil(innerWidth/cell); draw(); }
     function draw(){ ctx.clearRect(0,0,innerWidth,innerHeight);
       const nc=Math.ceil(innerWidth/cell), nr=Math.ceil(innerHeight/cell);
       ctx.strokeStyle='rgba(255,255,255,0.09)'; ctx.lineWidth=lw;

@@ -3,7 +3,7 @@
   const reduce = PF.reduce;
   // On touch / small screens (phones) these canvases are fill-bound: a 2-3x retina backing store is the
   // main cost. Cap the backing to 1x, halve the render rate, thin the fleet, and drop the additive rays.
-  const coarse = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+  const coarse = matchMedia('(hover: none) and (pointer: coarse)').matches;   // touch devices only; desktop (any width) keeps full quality
   function fit(c){ const dpr=Math.min(devicePixelRatio||1, coarse?1:1.5); const r=c.getBoundingClientRect(); c.width=r.width*dpr; c.height=r.height*dpr; const ctx=c.getContext('2d'); ctx.scale(dpr,dpr); return {ctx,w:r.width,h:r.height}; }
   function ptr(c,st){ const hint=c.parentNode.querySelector('.hint');
     const set=e=>{ const r=c.getBoundingClientRect(); st.x=e.clientX-r.left; st.y=e.clientY-r.top; st.on=true; if(hint&&!st._h){ st._h=true; hint.style.opacity=0; } };
