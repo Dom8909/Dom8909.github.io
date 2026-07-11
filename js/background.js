@@ -42,6 +42,27 @@
       eff.forEach((v,key)=>{ const p=key.split(','); const x=p[1]*cell, y=p[0]*cell; ctx.globalAlpha=Math.max(v.a,0); ctx.fillStyle=v.col; ctx.shadowBlur=8; ctx.shadowColor=v.col; rr(x+pad,y+pad,cell-pad*2,cell-pad*2,rad); ctx.fill(); });
       ctx.globalAlpha=1; ctx.shadowBlur=0;
       if(alive){ fwRaf=requestAnimationFrame(fwLoop); } else { fwRaf=null; draw(); } }
+    // Fusion: before the burst, the matched tiles rush together into a bright core, which then erupts.
+    let fusion=null, fusRaf=null;
+    function startFusion(cells, col, br, bc, size){
+      fusion={ cells:cells.map(k=>{ const p=k.split(','); return {r:+p[0], c:+p[1]}; }), col, br, bc, size, start:performance.now(), dur:560 };
+      fusionLoop(); }
+    function fusionLoop(){ if(!fusion) return;
+      const p=Math.min(1,(performance.now()-fusion.start)/fusion.dur), conv=1-Math.pow(1-p,3);
+      const cx=(fusion.bc+0.5)*cell, cy=(fusion.br+0.5)*cell;
+      draw();
+      ctx.save(); ctx.globalCompositeOperation='lighter';
+      for(const t of fusion.cells){ const ocx=(t.c+0.5)*cell, ocy=(t.r+0.5)*cell;
+        const x=ocx+(cx-ocx)*conv, y=ocy+(cy-ocy)*conv, sz=(cell-pad*2)*(1-0.42*conv);
+        ctx.fillStyle=fusion.col; ctx.shadowBlur=8+26*p; ctx.shadowColor=fusion.col;
+        rr(x-sz/2, y-sz/2, sz, sz, rad); ctx.fill(); }
+      if(p>0.4){ const cp=(p-0.4)/0.6, R=cell*(0.35+0.8*cp);   // white-hot core builds up in the second half
+        const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+        g.addColorStop(0,'rgba(255,255,255,'+(0.55+0.45*cp).toFixed(3)+')'); g.addColorStop(0.45,fusion.col); g.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,R,0,6.283); ctx.fill(); }
+      ctx.restore(); ctx.shadowBlur=0;
+      if(p<1){ fusRaf=requestAnimationFrame(fusionLoop); }
+      else { const f=fusion; fusion=null; fusRaf=null; startFireworks(f.br, f.bc, f.size); } }
     addEventListener('resize', ()=>{ clearTimeout(window._gT); window._gT=setTimeout(resize,120); });
     addEventListener('click', e=>{ if(e.target.closest('.lg, canvas, a, button, .hero-copy, .spawn-item')) return; const r=Math.floor(e.clientY/cell), c=Math.floor(e.clientX/cell), key=r+','+c;
       if(!on.has(key)){ on.set(key, palette[Math.floor(Math.random()*palette.length)]); hits.set(key,1); }  // first tap starts on a random colour, so squares don't line up by accident
@@ -49,9 +70,11 @@
         if(n>palette.length){ on.delete(key); hits.delete(key); draw(); return; }
         on.set(key, palette[(palette.indexOf(on.get(key))+1)%palette.length]); hits.set(key,n); }
       const m=checkMatch(r,c);
-      if(m){ for(let dr=0;dr<m.s;dr++)for(let dc=0;dc<m.s;dc++){ const k=(m.r0+dr)+','+(m.c0+dc); on.delete(k); hits.delete(k); } if(!reduce) startFireworks(m.r0+(m.s-1)/2, m.c0+(m.s-1)/2, m.s); }
+      if(m){ const cells=[]; for(let dr=0;dr<m.s;dr++)for(let dc=0;dc<m.s;dc++) cells.push((m.r0+dr)+','+(m.c0+dc));
+        const col=on.get(cells[0]); cells.forEach(k=>{ on.delete(k); hits.delete(k); });
+        if(!reduce){ startFusion(cells, col, m.r0+(m.s-1)/2, m.c0+(m.s-1)/2, m.s); return; } }  // fusion drives the redraw, then bursts
       draw(); });
-    if(matchMedia('(pointer:fine)').matches){ addEventListener('mousemove', e=>{ const over=e.target.closest('.lg, canvas, a, button, .hero-copy, .spawn-item'); const key=over?null:(Math.floor(e.clientY/cell)+','+Math.floor(e.clientX/cell)); if(key!==hoverKey){ hoverKey=key; if(!fwRaf) draw(); } }, {passive:true}); }
+    if(matchMedia('(pointer:fine)').matches){ addEventListener('mousemove', e=>{ const over=e.target.closest('.lg, canvas, a, button, .hero-copy, .spawn-item'); const key=over?null:(Math.floor(e.clientY/cell)+','+Math.floor(e.clientX/cell)); if(key!==hoverKey){ hoverKey=key; if(!fwRaf && !fusRaf) draw(); } }, {passive:true}); }
     resize();
   })();
 
