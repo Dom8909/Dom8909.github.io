@@ -132,24 +132,6 @@
   .card-body .open .arr{ transition:transform 0.3s var(--ease); }
   .card:hover .open .arr{ transform:translateX(5px); }
 
-  /* fusion (merge game) */
-  .gacha-card{ grid-column:1/-1; }
-  .gacha-wrap{ position:relative; z-index:3; display:flex; gap:30px; padding:26px; align-items:stretch; }
-  @media(max-width:760px){ .gacha-wrap{ flex-direction:column; gap:18px; padding:18px; } }
-  .gacha-stage{ position:relative; flex:2.1; min-width:0; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); background:#0a1420; }
-  .gacha-stage canvas{ display:block; width:100%; height:410px; }
-  @media(max-width:760px){ .gacha-stage canvas{ height:340px; } }
-  .gacha-hud{ position:absolute; top:10px; right:11px; font-family:"JetBrains Mono",monospace; font-size:0.66rem; letter-spacing:0.04em; color:var(--frost); background:rgba(10,12,24,0.5); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); padding:5px 11px; border-radius:100px; border:1px solid rgba(255,255,255,0.12); }
-  .gacha-hud span{ color:var(--aqua); font-weight:600; }
-  .gacha-panel{ flex:1; min-width:0; display:flex; flex-direction:column; }
-  .gacha-panel h3{ font-family:"Instrument Serif",serif; font-weight:400; font-size:1.7rem; margin-bottom:7px; }
-  .gacha-panel p{ color:var(--muted); font-size:0.92rem; max-width:46ch; }
-  .gacha-ladder{ display:flex; gap:7px; margin-top:18px; }
-  .gacha-ladder .rung{ width:22px; height:22px; border-radius:50%; background:var(--c); opacity:0.16; transition:opacity .35s var(--ease), box-shadow .35s var(--ease); }
-  .gacha-ladder .rung.on{ opacity:1; box-shadow:0 0 11px -1px var(--c); }
-  .gacha-cap{ font-family:"JetBrains Mono",monospace; font-size:0.6rem; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-top:10px; }
-  .gacha-ctrl{ display:flex; gap:10px; margin-top:auto; padding-top:16px; }
-
   /* chess */
   .chess-card{ grid-column:1/-1; }
   .conjure-card{ grid-column:1/-1; }
